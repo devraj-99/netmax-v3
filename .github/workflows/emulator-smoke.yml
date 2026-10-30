@@ -99,14 +99,18 @@ jobs:
             adb shell input tap 1200 540 || true
             sleep 3
             adb shell uiautomator dump /sdcard/ui4a2.xml && adb pull /sdcard/ui4a2.xml ui4a2.xml || true
-            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || true
+            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || adb shell input tap 1626 135 || true
             sleep 6
             adb shell input tap 1200 540 || true
             sleep 3
             adb exec-out screencap -p > shot_4b_reel_mode.png
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
-            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || true
-            sleep 4
+            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || adb shell input tap 1740 135 || true
+            sleep 2
+            adb shell input tap 1200 540 || true
+            sleep 1
+            adb shell input tap 1200 400 || true
+            sleep 2
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell input keyevent KEYCODE_HOME
             sleep 2
