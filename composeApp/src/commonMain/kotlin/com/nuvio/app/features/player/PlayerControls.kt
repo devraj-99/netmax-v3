@@ -114,6 +114,8 @@ internal fun PlayerControlsShell(
     onParentalGuideAnimationComplete: () -> Unit = {},
     onScrubChange: (Long) -> Unit,
     onScrubFinished: (Long) -> Unit,
+    equalizerVisible: Boolean,
+    onEqualizerVisibleChange: (Boolean) -> Unit,
     horizontalSafePadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -183,6 +185,8 @@ internal fun PlayerControlsShell(
                 isVisualEnhancerActive = isVisualEnhancerActive,
                 onOpenInExternalPlayer = onOpenInExternalPlayer,
                 onBack = onBack,
+                equalizerVisible = equalizerVisible,
+                onEqualizerVisibleChange = onEqualizerVisibleChange,
                 hazeState = hazeState,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -256,11 +260,12 @@ private fun PlayerHeader(
     isVisualEnhancerActive: Boolean = false,
     onOpenInExternalPlayer: (() -> Unit)?,
     onBack: () -> Unit,
+    equalizerVisible: Boolean,
+    onEqualizerVisibleChange: (Boolean) -> Unit,
     hazeState: dev.chrisbanes.haze.HazeState? = null,
     modifier: Modifier = Modifier,
 ) {
     val typeScale = MaterialTheme.nuvioTypeScale
-    var showEqualizer by remember { mutableStateOf(false) }
     val orientationMode = PlayerOrientationPreference.mode.value
     val metadataAlpha by animateFloatAsState(
         targetValue = if (!showParentalGuide && showActions) 1f else 0f,
@@ -395,8 +400,8 @@ private fun PlayerHeader(
                         contentDescription = stringResource(Res.string.player_action_equalizer),
                         buttonSize = metrics.headerIconSize + 16.dp,
                         iconSize = metrics.headerIconSize,
-                        tint = if (showEqualizer) MaterialTheme.colorScheme.primary else Color.White,
-                        onClick = { showEqualizer = !showEqualizer },
+                        tint = if (equalizerVisible) MaterialTheme.colorScheme.primary else Color.White,
+                        onClick = { onEqualizerVisibleChange(!equalizerVisible) },
                     )
                     PlayerHeaderIconButton(
                         icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
@@ -431,12 +436,12 @@ private fun PlayerHeader(
                 }
             }
         }
-        if (showEqualizer) {
+        if (equalizerVisible) {
             com.nuvio.app.features.equalizer.EqualizerPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp),
-                onDismiss = { showEqualizer = false },
+                onDismiss = { onEqualizerVisibleChange(false) },
             )
         }
     }

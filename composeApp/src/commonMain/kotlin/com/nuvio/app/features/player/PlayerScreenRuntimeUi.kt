@@ -284,6 +284,8 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             resizeMode = resizeMode,
             isLocked = playerControlsLocked,
             showPlaybackControls = controlsVisible,
+            equalizerVisible = equalizerPanelVisible,
+            onEqualizerVisibleChange = { equalizerPanelVisible = it },
             onLockToggle = {
                 if (playerControlsLocked) unlockPlayerControls() else lockPlayerControls()
             },

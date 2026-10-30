@@ -55,6 +55,7 @@ internal fun PlayerScreenRuntime.revealLockedOverlay() {
 internal fun PlayerScreenRuntime.lockPlayerControls() {
     playerControlsLocked = true
     controlsVisible = false
+    equalizerPanelVisible = false
     lockedOverlayVisible = false
     pausedOverlayVisible = false
     isScrubbingTimeline = false
@@ -270,8 +271,10 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
         val centerEnd = layoutSize.width * PlayerRightGestureBoundary
         if (controlsVisible && offset.x in centerStart..centerEnd) {
             controlsVisible = false
+            equalizerPanelVisible = false
         } else {
             controlsVisible = !controlsVisible
+            if (!controlsVisible) equalizerPanelVisible = false
         }
     }
     val onSurfaceDoubleTap = rememberUpdatedState { offset: Offset ->
@@ -281,6 +284,7 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
         }
         if (!playerSettingsUiState.touchGesturesEnabled) {
             controlsVisible = !controlsVisible
+            if (!controlsVisible) equalizerPanelVisible = false
             return@rememberUpdatedState
         }
         when {
@@ -290,7 +294,10 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
             offset.x > layoutSize.width * PlayerRightGestureBoundary -> {
                 handleDoubleTapSeek(PlayerSeekDirection.Forward)
             }
-            else -> controlsVisible = !controlsVisible
+            else -> {
+                controlsVisible = !controlsVisible
+                if (!controlsVisible) equalizerPanelVisible = false
+            }
         }
     }
     return PlayerSurfaceGestureCallbacks(

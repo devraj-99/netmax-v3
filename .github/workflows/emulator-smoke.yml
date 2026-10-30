@@ -131,6 +131,15 @@ jobs:
             sleep 1
             adb shell uiautomator dump /sdcard/ui4eq2.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq2.xml ui4eq2.xml >/dev/null 2>&1; grep -o 'class="android.widget.Switch"[^>]*/' ui4eq2.xml | head -2 || true
             adb exec-out screencap -p > shot_4c2_eq_adjusted.png
+            sleep 5
+            adb exec-out screencap -p > shot_4c3_eq_persist.png
+            adb shell uiautomator dump /sdcard/ui4eq3.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq3.xml ui4eq3.xml >/dev/null 2>&1
+            grep -q "Audio Equalizer" ui4eq3.xml && echo "VERDICT: EQ PANEL PERSISTS PAST AUTO-HIDE" || echo "VERDICT: EQ PANEL CLOSED EARLY (auto-hide defect present)"
+            grep -q "Audio Equalizer" ui4eq3.xml && python3 .github/scripts/tap_text.py ui4eq3.xml "Close" || true
+            sleep 4
+            adb shell uiautomator dump /sdcard/ui4eq4.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq4.xml ui4eq4.xml >/dev/null 2>&1
+            grep -q "Audio Equalizer" ui4eq4.xml && echo "VERDICT: EQ DISMISS FAILED (panel still open)" || echo "VERDICT: EQ DISMISS OK (panel closed)"
+            grep -q 'content-desc="Equalizer"' ui4eq4.xml && echo "VERDICT: CONTROLS STILL VISIBLE AFTER DISMISS" || echo "VERDICT: AUTO-HIDE RESTORED AFTER DISMISS"
             sleep 4
             adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1
             grep -q 'content-desc="Reel mode' ui4reel.xml || { adb shell input tap 1200 540 || true; sleep 1; adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1; }

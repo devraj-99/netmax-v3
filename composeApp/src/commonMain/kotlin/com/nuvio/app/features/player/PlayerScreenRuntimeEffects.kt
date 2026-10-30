@@ -353,6 +353,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
 private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
     LaunchedEffect(
         controlsVisible,
+        equalizerPanelVisible,
         isScrubbingTimeline,
         playbackSnapshot.isPlaying,
         playbackSnapshot.isLoading,
@@ -361,6 +362,7 @@ private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
     ) {
         if (
             !controlsVisible ||
+            equalizerPanelVisible ||
             isScrubbingTimeline ||
             !playbackSnapshot.isPlaying ||
             playbackSnapshot.isLoading ||
