@@ -23,7 +23,7 @@ jobs:
 
       - name: Download release APK
         run: |
-          APK_URL=$(curl -s https://api.github.com/repos/devraj-99/netmax-v3/releases/latest | jq -r '.assets[0].browser_download_url')
+          APK_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/devraj-99/netmax-v3/releases/latest | jq -r '.assets[0].browser_download_url')
           echo "APK_URL=$APK_URL"
           curl -L --fail -o app.apk "$APK_URL"
           ls -la app.apk
