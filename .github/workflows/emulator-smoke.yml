@@ -180,13 +180,7 @@ jobs:
             sleep 3
             adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
             python3 .github/scripts/tap_text.py ui6.xml "Just once" || true
-            for TRY in 1 2 3; do
-              sleep 4
-              adb shell uiautomator dump /sdcard/ui6r.xml >/dev/null 2>&1 && adb pull /sdcard/ui6r.xml ui6r.xml >/dev/null 2>&1 || true
-              if ! grep -q "Just once" ui6r.xml 2>/dev/null; then echo "chooser dispatched on try $TRY"; break; fi
-              echo "chooser still open, retrying Just once (try $TRY)"
-              python3 .github/scripts/tap_text.py ui6r.xml "Just once" || true
-            done
+            for TRY in 1 2 3; do sleep 4; adb shell uiautomator dump /sdcard/ui6r.xml >/dev/null 2>&1; adb pull /sdcard/ui6r.xml ui6r.xml >/dev/null 2>&1 || true; if ! grep -q "Just once" ui6r.xml 2>/dev/null; then echo "chooser dispatched on try $TRY"; break; fi; echo "chooser still open, retrying Just once (try $TRY)"; python3 .github/scripts/tap_text.py ui6r.xml "Just once" || true; done
             sleep 25
             adb shell dumpsys activity activities | grep -E "topResumedActivity|ResumedActivity" | head -3 || true
             adb exec-out screencap -p > shot_6_openwith_player.png
