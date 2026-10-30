@@ -53,6 +53,7 @@ jobs:
             sleep 3
             adb push netmax_zzz_second.mp4 /sdcard/Movies/netmax_zzz_second.mp4
             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_zzz_second.mp4 || true
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_aaa_first.mp4 || true
             sleep 3
             adb push netmax_local_test.mp4 /sdcard/Movies/netmax_local_test.mp4
             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_local_test.mp4 || true
@@ -62,13 +63,13 @@ jobs:
             adb shell settings put global window_animation_scale 0; adb shell settings put global transition_animation_scale 0; adb shell settings put global animator_duration_scale 0
             adb shell am start -n com.nuvio.app/.MainActivity
             sleep 20
-            for TRY in 1 2 3 4 5 6; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done
+            for TRY in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done; grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; exit 1; }
             adb exec-out screencap -p > shot_1_launch.png
-            python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account" || true
+            python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
             sleep 12
             adb exec-out screencap -p > shot_1b_after_login.png
-            adb shell uiautomator dump /sdcard/ui1b.xml && adb pull /sdcard/ui1b.xml ui1b.xml || true
-            python3 .github/scripts/tap_text.py ui1b.xml @clickable:0 || true
+            for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1; adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1; if grep -q "Add Profile" ui1b.xml; then break; fi; sleep 6; done
+            python3 .github/scripts/tap_text.py ui1b.xml "Add Profile"
             sleep 15
             adb exec-out screencap -p > shot_1c_home.png
             adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
@@ -83,24 +84,24 @@ jobs:
             adb shell input keyevent KEYCODE_BACK || true
             sleep 2
             adb shell uiautomator dump /sdcard/ui1d2.xml && adb pull /sdcard/ui1d2.xml ui1d2.xml || true
-            python3 .github/scripts/tap_text.py ui1d2.xml "Create Profile" || true
+            python3 .github/scripts/tap_text.py ui1d2.xml "Create Profile"
             sleep 10
             adb exec-out screencap -p > shot_1e_home.png
             adb shell uiautomator dump /sdcard/ui1e.xml && adb pull /sdcard/ui1e.xml ui1e.xml || true
-            python3 .github/scripts/tap_text.py ui1e.xml "Library" || python3 .github/scripts/tap_text.py ui1e.xml "Smoke" || true
+            python3 .github/scripts/tap_text.py ui1e.xml "Library" || python3 .github/scripts/tap_text.py ui1e.xml "Smoke"
             sleep 10
             adb shell uiautomator dump /sdcard/ui1f.xml && adb pull /sdcard/ui1f.xml ui1f.xml || true
             python3 .github/scripts/tap_text.py ui1f.xml "Library" || true
             sleep 8
             adb exec-out screencap -p > shot_2_library.png
             adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml ui2.xml || true
-            python3 .github/scripts/tap_text.py ui2.xml "Local" || true
+            python3 .github/scripts/tap_text.py ui2.xml "Local"
             sleep 10
             adb exec-out screencap -p > shot_3_local_tab.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
             for TRY in 1 2 3; do if grep -q "netmax_zzz_second" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
             adb logcat -c || true
-            python3 .github/scripts/tap_text.py ui3.xml "netmax_zzz_second" || true
+            python3 .github/scripts/tap_text.py ui3.xml "netmax_zzz_second"
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
             adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
@@ -162,6 +163,8 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shot_6_openwith_player.png
             adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
+            adb logcat -d > logcat_full.txt 2>&1 || true
+            cp ms_bg1.txt ms_bg2.txt audioflinger.txt . 2>/dev/null || true
             echo SMOKE_DONE
 
       - name: Upload evidence
@@ -172,4 +175,5 @@ jobs:
           path: |
             shot_*.png
             ui*.xml
+            *.txt
           retention-days: 30
