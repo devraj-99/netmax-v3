@@ -82,9 +82,7 @@ internal actual class PlatformMusicAudioPlayer actual constructor() {
                     }
                 })
             }.also { player ->
-                try {
-                    com.nuvio.app.features.equalizer.PlatformAudioEqualizer.attachAudioSession(player.audioSessionId)
-                } catch (_: Throwable) {}
+                com.nuvio.app.features.equalizer.PlatformAudioEqualizer.attachToExoPlayer(ctx, player)
             }
     }
 

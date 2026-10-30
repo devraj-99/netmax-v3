@@ -6,6 +6,28 @@ import android.media.audiofx.Virtualizer
 import android.util.Log
 
 actual object PlatformAudioEqualizer {
+
+    /** Attach to an ExoPlayer instance, generating a real audio session id when the
+     *  player has not created one yet (attach at build time used to receive
+     *  C.AUDIO_SESSION_ID_UNSET, silently binding effects to session 0). */
+    fun attachToExoPlayer(context: android.content.Context, player: androidx.media3.exoplayer.ExoPlayer) {
+        try {
+            var sessionId = player.audioSessionId
+            if (sessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+                if (audioManager == null) {
+                    Log.w(TAG, "AudioManager unavailable; attaching to raw session $sessionId")
+                } else {
+                    sessionId = audioManager.generateAudioSessionId()
+                    player.setAudioSessionId(sessionId)
+                }
+            }
+            attachAudioSession(sessionId)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to attach audio effects", t)
+        }
+    }
+
     private const val TAG = "AudioEqualizer"
 
     private val activeSessions = mutableSetOf<Int>()

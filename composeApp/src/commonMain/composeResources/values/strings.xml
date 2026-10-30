@@ -460,6 +460,9 @@
     <string name="compose_player_resize_fill">Fill</string>
     <string name="compose_player_resize_fit">Fit</string>
     <string name="compose_player_resize_zoom">Zoom</string>
+    <string name="compose_player_orientation_portrait">Reel mode (portrait)</string>
+    <string name="compose_player_orientation_landscape">Landscape mode</string>
+    <string name="player_action_equalizer">Equalizer</string>
     <string name="compose_player_seek_back_10">Seek backward 10 seconds</string>
     <string name="compose_player_seek_delta_backward">-%1$ds</string>
     <string name="compose_player_seek_delta_forward">+%1$ds</string>

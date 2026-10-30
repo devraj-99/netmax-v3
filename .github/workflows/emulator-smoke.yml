@@ -23,7 +23,9 @@ jobs:
 
       - name: Download release APK
         run: |
-          curl -L --fail -o app.apk https://github.com/devraj-99/netmax-v3/releases/download/v3.2.0-1/NetMax-v3.2.0-release.apk
+          APK_URL=$(curl -s https://api.github.com/repos/devraj-99/netmax-v3/releases/latest | jq -r '.assets[0].browser_download_url')
+          echo "APK_URL=$APK_URL"
+          curl -L --fail -o app.apk "$APK_URL"
           ls -la app.apk
 
       - name: Generate test video
@@ -73,6 +75,16 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
             adb shell uiautomator dump /sdcard/ui4.xml && adb pull /sdcard/ui4.xml ui4.xml || true
+            adb shell input tap 540 1200 || true
+            sleep 3
+            adb shell uiautomator dump /sdcard/ui4b.xml && adb pull /sdcard/ui4b.xml ui4b.xml || true
+            python3 .github/scripts/tap_text.py ui4b.xml "Reel mode" || true
+            sleep 6
+            adb exec-out screencap -p > shot_4b_reel_mode.png
+            adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
+            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || true
+            sleep 4
+            adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell input keyevent KEYCODE_HOME
             sleep 2
             VID=$(adb shell content query --uri content://media/external/video/media --projection _id | grep -o '_id=[0-9]*' | tail -1 | cut -d= -f2) || true

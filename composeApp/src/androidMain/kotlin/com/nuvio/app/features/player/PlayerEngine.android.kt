@@ -442,9 +442,7 @@ private fun ExoPlayerSurface(
             hasActiveSubtitle = false,
             useCustomSubtitles = false,
         )
-        try {
-            com.nuvio.app.features.equalizer.PlatformAudioEqualizer.attachAudioSession(player.audioSessionId)
-        } catch (_: Throwable) {}
+        com.nuvio.app.features.equalizer.PlatformAudioEqualizer.attachToExoPlayer(context, player)
         player
     }
 

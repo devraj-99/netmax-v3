@@ -20,7 +20,7 @@ if target.startswith('@clickable'):
     print('NOT FOUND:', target)
     sys.exit(1)
 for tag in tags:
-    tm = re.search(r'text="([^"]*)"', tag)
+    tm = re.search(r'text="([^"]*)"', tag) or re.search(r'content-desc="([^"]*)"', tag)
     if not tm:
         continue
     if target.lower() in tm.group(1).lower():

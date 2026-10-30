@@ -34,6 +34,9 @@ import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.StayCurrentLandscape
+import androidx.compose.material.icons.rounded.StayCurrentPortrait
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.LiquidGlassDefaults
 import com.nuvio.app.features.settings.LiquidGlassSettingsRepository
@@ -47,6 +50,9 @@ import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -254,6 +260,8 @@ private fun PlayerHeader(
     modifier: Modifier = Modifier,
 ) {
     val typeScale = MaterialTheme.nuvioTypeScale
+    var showEqualizer by remember { mutableStateOf(false) }
+    val orientationMode = PlayerOrientationPreference.mode.value
     val metadataAlpha by animateFloatAsState(
         targetValue = if (!showParentalGuide && showActions) 1f else 0f,
         animationSpec = tween(durationMillis = if (!showParentalGuide && showActions) 260 else 160),
@@ -368,6 +376,29 @@ private fun PlayerHeader(
                         )
                     }
                     PlayerHeaderIconButton(
+                        icon = if (orientationMode == PlayerOrientationMode.Portrait) {
+                            Icons.Rounded.StayCurrentLandscape
+                        } else {
+                            Icons.Rounded.StayCurrentPortrait
+                        },
+                        contentDescription = if (orientationMode == PlayerOrientationMode.Portrait) {
+                            stringResource(Res.string.compose_player_orientation_landscape)
+                        } else {
+                            stringResource(Res.string.compose_player_orientation_portrait)
+                        },
+                        buttonSize = metrics.headerIconSize + 16.dp,
+                        iconSize = metrics.headerIconSize,
+                        onClick = { PlayerOrientationPreference.toggle() },
+                    )
+                    PlayerHeaderIconButton(
+                        icon = Icons.Rounded.GraphicEq,
+                        contentDescription = stringResource(Res.string.player_action_equalizer),
+                        buttonSize = metrics.headerIconSize + 16.dp,
+                        iconSize = metrics.headerIconSize,
+                        tint = if (showEqualizer) MaterialTheme.colorScheme.primary else Color.White,
+                        onClick = { showEqualizer = !showEqualizer },
+                    )
+                    PlayerHeaderIconButton(
                         icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
                         contentDescription = if (isLocked) {
                             stringResource(Res.string.compose_player_unlock_controls)
@@ -399,6 +430,14 @@ private fun PlayerHeader(
                     }
                 }
             }
+        }
+        if (showEqualizer) {
+            com.nuvio.app.features.equalizer.EqualizerPanel(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                onDismiss = { showEqualizer = false },
+            )
         }
     }
 }
