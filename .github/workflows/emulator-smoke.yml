@@ -52,9 +52,9 @@ jobs:
             adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO || true
             adb shell content query --uri content://media/external/video/media --projection _display_name || true
             adb shell monkey -p com.nuvio.app -c android.intent.category.LAUNCHER 1
-            sleep 30
+            sleep 25
+            for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 2; adb shell monkey -p com.nuvio.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 18; done
             adb exec-out screencap -p > shot_1_launch.png
-            adb shell uiautomator dump /sdcard/ui1.xml && adb pull /sdcard/ui1.xml ui1.xml || true
             python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account" || true
             sleep 12
             adb exec-out screencap -p > shot_1b_after_login.png
@@ -89,6 +89,7 @@ jobs:
             sleep 10
             adb exec-out screencap -p > shot_3_local_tab.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
+            for TRY in 1 2 3; do if grep -q "netmax_local_test" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
             python3 .github/scripts/tap_text.py ui3.xml "netmax_local_test" || true
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
