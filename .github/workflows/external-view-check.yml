@@ -1,0 +1,121 @@
+name: External VIEW Verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-smoke:
+    name: Install APK on emulator and capture UI evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+
+      - name: Download release APK
+        run: |
+          APK_URL=https://github.com/devraj-99/netmax-v3/releases/download/v3.4.3-8/NetMax-v3.4.3-release.apk
+          echo "APK_URL=$APK_URL"
+          curl -L --fail -o app.apk "$APK_URL"
+          ls -la app.apk
+
+      - name: Prepare distinct long external file and check script
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=640x360:rate=24 -f lavfi -i sine=frequency=660:duration=180 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -shortest netmax_external_180s.mp4
+          cat > /tmp/external-check.sh <<'CHECK'
+          set -eux
+          adb install -r app.apk
+          adb push netmax_external_180s.mp4 /sdcard/Movies/netmax_external_180s.mp4
+          adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_external_180s.mp4
+          sleep 8
+          adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO
+          adb shell am start -n com.nuvio.app/.MainActivity
+          sleep 20
+          for TRY in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; if grep -q "isn't responding" ui1.xml; then if grep -q "nuvio" ui1.xml; then echo "FATAL: NETMAX ANR"; else echo "non-app ANR dialog (launcher), closing it"; python3 .github/scripts/tap_text.py ui1.xml "Close app" || true; fi; fi; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done; grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; adb exec-out screencap -p > shot_0_launch_fail.png; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" > launch_fail_focus.txt 2>&1; adb shell dumpsys activity top | head -80 > launch_fail_top.txt 2>&1; adb shell ps -A | grep -i nuvio > launch_fail_ps.txt 2>&1; adb logcat -d > logcat_launch_fail.txt 2>&1; adb shell dumpsys package com.nuvio.app | grep -E "versionCode|firstInstallTime|lastUpdateTime" > launch_fail_pkg.txt 2>&1; exit 1; }
+          adb exec-out screencap -p > shot_1_launch.png
+          python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
+          sleep 12
+          adb exec-out screencap -p > shot_1b_after_login.png
+          for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1; adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1; if grep -q "Who's watching?" ui1b.xml; then break; fi; sleep 6; done; grep -q "Who's watching?" ui1b.xml || { echo "FATAL: profile picker never appeared"; exit 1; }
+          python3 .github/scripts/tap_text.py ui1b.xml @clickable:0
+          sleep 15
+          adb exec-out screencap -p > shot_1c_home.png
+          adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
+          python3 .github/scripts/tap_text.py ui1c.xml "Add Profile" || true
+          sleep 8
+          adb exec-out screencap -p > shot_1d_addprofile.png
+          adb shell uiautomator dump /sdcard/ui1d.xml && adb pull /sdcard/ui1d.xml ui1d.xml || true
+          python3 .github/scripts/tap_text.py ui1d.xml "Profile name" || true
+          sleep 2
+          adb shell input text "Smoke" || true
+          sleep 2
+          adb shell input keyevent KEYCODE_BACK || true
+          sleep 2
+          adb shell uiautomator dump /sdcard/ui1d2.xml && adb pull /sdcard/ui1d2.xml ui1d2.xml || true
+          python3 .github/scripts/tap_text.py ui1d2.xml "Create Profile"
+          sleep 10
+          adb exec-out screencap -p > shot_1e_home.png
+          adb shell uiautomator dump /sdcard/ui1e.xml && adb pull /sdcard/ui1e.xml ui1e.xml || true
+          
+          # Every dispatch queries its own URI, exact filename and a numeric id.
+          for MODE in warm cold; do
+            if [ "$MODE" = cold ]; then adb shell am force-stop com.nuvio.app; else adb shell input keyevent KEYCODE_HOME; fi
+            sleep 2
+            adb shell content query --uri content://media/external/video/media --projection _id:_display_name > "$MODE-uri.txt"
+            cat "$MODE-uri.txt"
+            VID=$(grep 'netmax_external_180s.mp4' "$MODE-uri.txt" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+            [[ "$VID" =~ ^[0-9]+$ ]] || { echo "FATAL no exact external item"; exit 1; }
+            URI="content://media/external/video/media/$VID"
+            echo "$MODE DISPATCH URI=$URI"
+            adb shell am start -a android.intent.action.VIEW -d "$URI" -t video/mp4 --grant-read-uri-permission
+            sleep 4
+            python3 .github/scripts/tap_text.py @live "NetMax" || true
+            python3 .github/scripts/tap_text.py @live "Just once" || true
+            sleep 5
+            adb shell input tap 500 300
+            adb exec-out screencap -p > "shot_${MODE}_external_controls.png"
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml "$MODE-player.xml" >/dev/null
+            adb exec-out screencap -p > "shot_${MODE}_external_early.png"
+            adb shell dumpsys media_session > "$MODE-session1.txt"
+            sleep 5
+            adb exec-out screencap -p > "shot_${MODE}_external_later.png"
+            adb shell dumpsys media_session > "$MODE-session2.txt"
+            adb shell dumpsys activity activities > "$MODE-activities.txt"
+            echo "=== $MODE session ==="
+            grep -E 'state=PlaybackState|metadata:' "$MODE-session1.txt" | head -6
+            grep -E 'state=PlaybackState|metadata:' "$MODE-session2.txt" | head -6
+            grep -q 'description=netmax_external_180s' "$MODE-session1.txt" && grep -q 'PLAYING(3)' "$MODE-session1.txt" && echo "VERDICT $MODE matching external session PLAYING"
+          done
+          adb logcat -d > logcat_external.txt
+          adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
+          CHECK
+      - name: Verify warm and cold external VIEW
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash /tmp/external-check.sh
+      - name: Upload external evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-view-evidence
+          path: |
+            shot_*.png
+            *.xml
+            *.txt
+          retention-days: 30
