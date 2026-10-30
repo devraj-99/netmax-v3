@@ -118,15 +118,22 @@ jobs:
             adb shell input tap 1200 540 || true
             sleep 2
             adb exec-out screencap -p > shot_4c0_controls.png
-            python3 .github/scripts/tap_text.py ui4a2.xml "Equalizer" || adb shell input tap 1738 135 || true
-            sleep 3
-            adb exec-out screencap -p > shot_4c_equalizer.png
-            adb shell input swipe 540 700 540 500 800 || true
-            sleep 2
-            adb exec-out screencap -p > shot_4c2_eq_adjusted.png
+            sleep 4
             adb shell input tap 1200 540 || true
             sleep 1
-            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || adb shell input tap 1626 135 || true
+            adb shell input tap 1738 135
+            sleep 3
+            adb exec-out screencap -p > shot_4c_equalizer.png
+            adb shell uiautomator dump /sdcard/ui4eq.xml && adb pull /sdcard/ui4eq.xml ui4eq.xml || true
+            adb shell input tap 2150 380 || true
+            sleep 1
+            adb shell input swipe 1200 800 1700 800 600 || true
+            sleep 1
+            adb exec-out screencap -p > shot_4c2_eq_adjusted.png
+            sleep 4
+            adb shell input tap 1200 540 || true
+            sleep 1
+            adb shell input tap 1626 135
             sleep 6
             adb shell input tap 1200 540 || true
             sleep 3
@@ -155,6 +162,8 @@ jobs:
             adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1
             sleep 5
             adb exec-out screencap -p > shot_4g_background_return.png
+            adb shell input keyevent KEYCODE_BACK || true
+            sleep 3
             adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
             echo "=== audio sessions in playback tracks ==="
             grep -iE "session" audioflinger.txt | head -20 || true
@@ -171,7 +180,15 @@ jobs:
             sleep 3
             adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
             python3 .github/scripts/tap_text.py ui6.xml "Just once" || true
+            for TRY in 1 2 3; do
+              sleep 4
+              adb shell uiautomator dump /sdcard/ui6r.xml >/dev/null 2>&1 && adb pull /sdcard/ui6r.xml ui6r.xml >/dev/null 2>&1 || true
+              if ! grep -q "Just once" ui6r.xml 2>/dev/null; then echo "chooser dispatched on try $TRY"; break; fi
+              echo "chooser still open, retrying Just once (try $TRY)"
+              python3 .github/scripts/tap_text.py ui6r.xml "Just once" || true
+            done
             sleep 25
+            adb shell dumpsys activity activities | grep -E "topResumedActivity|ResumedActivity" | head -3 || true
             adb exec-out screencap -p > shot_6_openwith_player.png
             adb shell uiautomator dump /sdcard/ui6b.xml && adb pull /sdcard/ui6b.xml ui6b.xml || true
             adb shell dumpsys activity top | grep -i -m3 nuvio || true
