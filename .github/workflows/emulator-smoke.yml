@@ -118,7 +118,7 @@ jobs:
             adb shell input tap 1200 540 || true
             sleep 2
             adb exec-out screencap -p > shot_4c0_controls.png
-            python3 .github/scripts/tap_text.py ui4a2.xml "Equalizer" || adb shell input tap 1700 135 || true
+            python3 .github/scripts/tap_text.py ui4a2.xml "Equalizer" || adb shell input tap 1738 135 || true
             sleep 3
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell input swipe 540 700 540 500 800 || true
