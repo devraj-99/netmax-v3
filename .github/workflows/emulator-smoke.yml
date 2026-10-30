@@ -131,12 +131,18 @@ jobs:
             sleep 12
             adb exec-out screencap -p > shot_4e_autonext.png
             adb shell uiautomator dump /sdcard/ui4e.xml && adb pull /sdcard/ui4e.xml ui4e.xml || true
+            adb exec-out screencap -p > shot_4e2_before_home.png
             adb shell input keyevent KEYCODE_HOME
-            sleep 10
-            adb shell dumpsys media.audio_flinger > audioflinger_bg.txt 2>&1 || true
-            echo "=== audioflinger while app backgrounded ==="
-            grep -iE "thread|standby|session" audioflinger_bg.txt | head -30 || true
-            cp audioflinger_bg.txt shot_4f_audioflinger_bg.txt 2>/dev/null || true
+            sleep 5
+            adb shell dumpsys media_session > ms_bg1.txt 2>&1 || true
+            echo "=== media_session backgrounded t+5s ==="
+            grep -iE "nuvio|state=|position=" ms_bg1.txt | head -20 || true
+            sleep 5
+            adb shell dumpsys media_session > ms_bg2.txt 2>&1 || true
+            echo "=== media_session backgrounded t+10s ==="
+            grep -iE "nuvio|state=|position=" ms_bg2.txt | head -20 || true
+            cp ms_bg1.txt shot_4f1_ms_bg1.txt 2>/dev/null || true
+            cp ms_bg2.txt shot_4f2_ms_bg2.txt 2>/dev/null || true
             adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1
             sleep 5
             adb exec-out screencap -p > shot_4g_background_return.png
