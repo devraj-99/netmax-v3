@@ -115,19 +115,23 @@ jobs:
             adb shell input tap 1200 540 || true
             sleep 3
             adb shell uiautomator dump /sdcard/ui4a2.xml && adb pull /sdcard/ui4a2.xml ui4a2.xml || true
-            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || { adb shell input tap 1200 540; sleep 1; adb shell input tap 1626 135; } || true
+            adb shell input tap 1200 540 || true
+            sleep 2
+            adb exec-out screencap -p > shot_4c0_controls.png
+            python3 .github/scripts/tap_text.py ui4a2.xml "Equalizer" || adb shell input tap 1700 135 || true
+            sleep 3
+            adb exec-out screencap -p > shot_4c_equalizer.png
+            adb shell input swipe 540 700 540 500 800 || true
+            sleep 2
+            adb exec-out screencap -p > shot_4c2_eq_adjusted.png
+            adb shell input tap 1200 540 || true
+            sleep 1
+            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || adb shell input tap 1626 135 || true
             sleep 6
             adb shell input tap 1200 540 || true
             sleep 3
             adb exec-out screencap -p > shot_4b_reel_mode.png
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
-            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || { adb shell input tap 1200 540; sleep 1; adb shell input tap 1740 135; } || true
-            sleep 2
-            adb shell input tap 1200 540 || true
-            sleep 1
-            adb shell input tap 1200 400 || true
-            sleep 2
-            adb exec-out screencap -p > shot_4c_equalizer.png
             adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
             sleep 12
             adb exec-out screencap -p > shot_4e_autonext.png
@@ -160,9 +164,13 @@ jobs:
             adb exec-out screencap -p > shot_5_openwith_picker.png
             adb shell uiautomator dump /sdcard/ui5.xml && adb pull /sdcard/ui5.xml ui5.xml || true
             python3 .github/scripts/tap_text.py ui5.xml "NetMax" || python3 .github/scripts/tap_text.py ui5.xml "NETMAX" || true
+            sleep 3
+            adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
+            python3 .github/scripts/tap_text.py ui6.xml "Just once" || true
             sleep 15
             adb exec-out screencap -p > shot_6_openwith_player.png
-            adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
+            adb shell uiautomator dump /sdcard/ui6b.xml && adb pull /sdcard/ui6b.xml ui6b.xml || true
+            adb shell dumpsys activity top | grep -i -m3 nuvio || true
             adb logcat -d > logcat_full.txt 2>&1 || true
             cp ms_bg1.txt ms_bg2.txt audioflinger.txt . 2>/dev/null || true
             echo SMOKE_DONE
