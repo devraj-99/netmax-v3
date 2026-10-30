@@ -63,7 +63,7 @@ jobs:
             adb shell settings put global window_animation_scale 0; adb shell settings put global transition_animation_scale 0; adb shell settings put global animator_duration_scale 0
             adb shell am start -n com.nuvio.app/.MainActivity
             sleep 20
-            for TRY in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done; grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; exit 1; }
+            for TRY in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done; grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; adb exec-out screencap -p > shot_0_launch_fail.png; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" > launch_fail_focus.txt 2>&1; adb shell dumpsys activity top | head -80 > launch_fail_top.txt 2>&1; adb shell ps -A | grep -i nuvio > launch_fail_ps.txt 2>&1; adb logcat -d > logcat_launch_fail.txt 2>&1; adb shell dumpsys package com.nuvio.app | grep -E "versionCode|firstInstallTime|lastUpdateTime" > launch_fail_pkg.txt 2>&1; exit 1; }
             adb exec-out screencap -p > shot_1_launch.png
             python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
             sleep 12
@@ -122,23 +122,32 @@ jobs:
             adb shell input tap 1200 540 || true
             sleep 1
             adb shell input tap 1738 135
-            sleep 3
+            sleep 1
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell uiautomator dump /sdcard/ui4eq.xml && adb pull /sdcard/ui4eq.xml ui4eq.xml || true
-            adb shell input tap 2150 380 || true
+            grep -q "Audio Equalizer" ui4eq.xml && echo "VERDICT: EQ PANEL OPEN after coordinate tap" || echo "VERDICT: EQ PANEL ABSENT after coordinate tap"
+            if ! grep -q "Audio Equalizer" ui4eq.xml; then adb shell uiautomator dump /sdcard/ui_pre_eq.xml >/dev/null 2>&1; adb pull /sdcard/ui_pre_eq.xml ui_pre_eq.xml >/dev/null 2>&1; grep -q 'content-desc="Equalizer"' ui_pre_eq.xml || { adb shell input tap 1200 540 || true; sleep 1; adb shell uiautomator dump /sdcard/ui_pre_eq.xml >/dev/null 2>&1; adb pull /sdcard/ui_pre_eq.xml ui_pre_eq.xml >/dev/null 2>&1; }; grep -q "Audio Equalizer" ui_pre_eq.xml || python3 .github/scripts/tap_text.py ui_pre_eq.xml "Equalizer" || true; sleep 1; adb exec-out screencap -p > shot_4c_retry.png; adb shell uiautomator dump /sdcard/ui4eq.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq.xml ui4eq.xml >/dev/null 2>&1; grep -q "Audio Equalizer" ui4eq.xml && echo "VERDICT: EQ PANEL OPEN after desc retry" || echo "VERDICT: EQ PANEL ABSENT FINAL"; fi
+            grep -q "Audio Equalizer" ui4eq.xml && python3 .github/scripts/tap_text.py ui4eq.xml "@class:android.widget.Switch" || true
             sleep 1
-            adb shell input swipe 1200 800 1700 800 600 || true
-            sleep 1
+            adb shell uiautomator dump /sdcard/ui4eq2.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq2.xml ui4eq2.xml >/dev/null 2>&1; grep -o 'class="android.widget.Switch"[^>]*/' ui4eq2.xml | head -2 || true
             adb exec-out screencap -p > shot_4c2_eq_adjusted.png
             sleep 4
-            adb shell input tap 1200 540 || true
+            adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1
+            grep -q 'content-desc="Reel mode' ui4reel.xml || { adb shell input tap 1200 540 || true; sleep 1; adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1; }
+            python3 .github/scripts/tap_text.py ui4reel.xml "Reel mode (portrait)" || adb shell input tap 1626 135 || true
+            sleep 6
+            adb shell input tap 540 1200 || true
             sleep 1
-            adb shell input tap 1626 135
+            adb exec-out screencap -p > shot_4b_reel_mode.png
+            file shot_4b_reel_mode.png
+            adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
+            python3 .github/scripts/tap_text.py ui4c.xml "Landscape mode" || echo "WARN: reel-exit desc not found in ui4c"
             sleep 6
             adb shell input tap 1200 540 || true
-            sleep 3
-            adb exec-out screencap -p > shot_4b_reel_mode.png
-            adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
+            sleep 2
+            adb exec-out screencap -p > shot_4b2_landscape_restored.png
+            file shot_4b2_landscape_restored.png
+            adb shell uiautomator dump /sdcard/ui4c2.xml >/dev/null 2>&1; adb pull /sdcard/ui4c2.xml ui4c2.xml >/dev/null 2>&1
             adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
             adb shell input keyevent KEYCODE_BACK || true
             sleep 4
@@ -146,6 +155,7 @@ jobs:
             python3 .github/scripts/tap_text.py ui4d.xml "netmax_zzz_second"
             sleep 17
             adb exec-out screencap -p > shot_4e_autonext.png
+            file shot_4e_autonext.png
             adb shell uiautomator dump /sdcard/ui4e.xml && adb pull /sdcard/ui4e.xml ui4e.xml || true
             adb exec-out screencap -p > shot_4e2_before_home.png
             adb shell input keyevent KEYCODE_HOME

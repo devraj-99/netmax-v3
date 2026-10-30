@@ -19,6 +19,17 @@ if target.startswith('@clickable'):
             sys.exit(0)
     print('NOT FOUND:', target)
     sys.exit(1)
+if target.startswith('@class:'):
+    want_cls = target.split(':', 1)[1]
+    cls_nodes = [t for t in tags if 'class="%s"' % want_cls in t]
+    if cls_nodes:
+        c = bounds_of(cls_nodes[0])
+        if c:
+            subprocess.run(['adb', 'shell', 'input', 'tap', str(c[0]), str(c[1])], check=True)
+            print('TAPPED class=%s at' % want_cls, c)
+            sys.exit(0)
+    print('NOT FOUND:', target)
+    sys.exit(1)
 for tag in tags:
     tm = re.search(r'text="([^"]*)"', tag) or re.search(r'content-desc="([^"]*)"', tag)
     if not tm:
