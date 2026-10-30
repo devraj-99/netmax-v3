@@ -93,11 +93,15 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
             adb shell uiautomator dump /sdcard/ui4.xml && adb pull /sdcard/ui4.xml ui4.xml || true
-            adb shell input tap 540 1200 || true
+            python3 .github/scripts/tap_text.py ui4.xml "Got it" || true
             sleep 3
-            adb shell uiautomator dump /sdcard/ui4b.xml && adb pull /sdcard/ui4b.xml ui4b.xml || true
-            python3 .github/scripts/tap_text.py ui4b.xml "Reel mode" || true
+            adb shell input tap 1200 540 || true
+            sleep 3
+            adb shell uiautomator dump /sdcard/ui4a2.xml && adb pull /sdcard/ui4a2.xml ui4a2.xml || true
+            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || true
             sleep 6
+            adb shell input tap 1200 540 || true
+            sleep 3
             adb exec-out screencap -p > shot_4b_reel_mode.png
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
             python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || true
@@ -105,11 +109,7 @@ jobs:
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell input keyevent KEYCODE_HOME
             sleep 2
-            adb shell content query --uri content://media/external/video/media --projection _id > vidq.txt || true
-            cat vidq.txt || true
-            VID=$(grep -o '_id=[0-9]*' vidq.txt | tail -1 | cut -d= -f2) || true
-            echo "MEDIA_ID=$VID"
-            if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*" || true; fi
+            adb shell content query --uri content://media/external/video/media --projection _id > vidq.txt 2>&1; cat vidq.txt; VID=$(grep -o '_id=[0-9]*' vidq.txt | tail -1 | cut -d= -f2); echo "MEDIA_ID=$VID"; if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*"; fi
             sleep 8
             adb exec-out screencap -p > shot_5_openwith_picker.png
             adb shell uiautomator dump /sdcard/ui5.xml && adb pull /sdcard/ui5.xml ui5.xml || true
