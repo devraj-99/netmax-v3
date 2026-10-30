@@ -199,7 +199,7 @@ internal fun PlayerControlsShell(
                     ),
             )
 
-            if (showPlaybackControls) {
+            if (showPlaybackControls && !equalizerVisible) {
                 CenterControls(
                     snapshot = playbackSnapshot,
                     metrics = metrics,
@@ -213,7 +213,7 @@ internal fun PlayerControlsShell(
                 )
             }
 
-            if (showPlaybackControls) {
+            if (showPlaybackControls && !equalizerVisible) {
                 ProgressControls(
                     playbackSnapshot = playbackSnapshot,
                     displayedPositionMs = displayedPositionMs,

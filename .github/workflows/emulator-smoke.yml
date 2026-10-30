@@ -136,6 +136,10 @@ jobs:
             sleep 1
             adb shell uiautomator dump /sdcard/ui4eq3.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq3.xml ui4eq3.xml >/dev/null 2>&1
             grep -q "Bass Boost" ui4eq3.xml && echo "VERDICT: EQ PRESET APPLIED (band values changed to Bass Boost)" || echo "VERDICT: EQ PRESET CHANGE FAILED"
+            python3 .github/scripts/drag_seek.py || true
+            sleep 1
+            adb shell uiautomator dump /sdcard/ui4eq3c.xml >/dev/null 2>&1; adb pull /sdcard/ui4eq3c.xml ui4eq3c.xml >/dev/null 2>&1
+            B1=$(grep -o 'text="[^"]* dB"' ui4eq3.xml | head -1 || true); B2=$(grep -o 'text="[^"]* dB"' ui4eq3c.xml | head -1 || true); echo "BAND_BEFORE=$B1 BAND_AFTER=$B2"; if [ -n "$B2" ] && [ "$B1" != "$B2" ]; then echo "VERDICT: EQ BAND DRAG CHANGED VALUE"; else echo "VERDICT: EQ BAND DRAG NO CHANGE"; fi
             adb exec-out screencap -p > shot_4c2_eq_adjusted.png
             sleep 5
             adb exec-out screencap -p > shot_4c3_eq_persist.png
@@ -149,7 +153,7 @@ jobs:
             sleep 4
             adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1
             grep -q 'content-desc="Reel mode' ui4reel.xml || { adb shell input tap 1200 540 || true; sleep 1; adb shell uiautomator dump /sdcard/ui4reel.xml >/dev/null 2>&1; adb pull /sdcard/ui4reel.xml ui4reel.xml >/dev/null 2>&1; }
-            python3 .github/scripts/tap_text.py ui4reel.xml "Reel mode (portrait)" || adb shell input tap 1626 135 || true
+            python3 .github/scripts/tap_text.py @live "Reel mode (portrait)" || adb shell input tap 1626 135 || true
             sleep 6
             adb shell input tap 540 1200 || true
             sleep 1
@@ -157,7 +161,7 @@ jobs:
             file shot_4b_reel_mode.png
             file shot_4b_reel_mode.png | grep -q "1080 x 2400" && echo "VERDICT: REEL PORTRAIT OK" || echo "VERDICT: REEL PORTRAIT NOT CONFIRMED"
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
-            python3 .github/scripts/tap_text.py ui4c.xml "Landscape mode" || echo "WARN: reel-exit desc not found in ui4c"
+            python3 .github/scripts/tap_text.py @live "Landscape mode" || echo "WARN: reel-exit desc not found (live)"
             sleep 6
             adb shell input tap 1200 540 || true
             sleep 2
@@ -221,9 +225,31 @@ jobs:
             sleep 4
             adb shell dumpsys media_session > ms_ow2.txt 2>&1 || true
             grep -iE "state=|position=" ms_ow2.txt | head -10 || true
-            grep -q "state=3" ms_ow1.txt && echo "VERDICT: OPEN-WITH SESSION PLAYING (state=3)" || echo "VERDICT: OPEN-WITH NO PLAYING SESSION"
+            grep -q "PLAYING(3)" ms_ow1.txt && echo "VERDICT: OPEN-WITH SESSION PLAYING" || echo "VERDICT: OPEN-WITH NO PLAYING SESSION"
             P1=$(grep -o "position=[0-9-]*" ms_ow1.txt | head -1 | cut -d= -f2 || true); P2=$(grep -o "position=[0-9-]*" ms_ow2.txt | head -1 | cut -d= -f2 || true); echo "OWPOS1=$P1 OWPOS2=$P2"; if [ -n "$P1" ] && [ -n "$P2" ] && [ "$P2" -gt "$P1" ]; then echo "VERDICT: OPEN-WITH POSITION ADVANCING"; else echo "VERDICT: OPEN-WITH POSITION NOT ADVANCING"; fi
             grep -qE '"Fit"|"Subs"|netmax_local_test' ui6b.xml && echo "VERDICT: OPEN-WITH PLAYER UI AT +8s" || echo "VERDICT: OPEN-WITH NO PLAYER UI AT +8s"
+            adb shell am force-stop com.nuvio.app
+            sleep 3
+            adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*"
+            sleep 6
+            adb shell uiautomator dump /sdcard/ui7.xml >/dev/null 2>&1; adb pull /sdcard/ui7.xml ui7.xml >/dev/null 2>&1 || true
+            python3 .github/scripts/tap_text.py ui7.xml "NetMax" || python3 .github/scripts/tap_text.py ui7.xml "NETMAX" || true
+            sleep 3
+            adb shell uiautomator dump /sdcard/ui7b.xml >/dev/null 2>&1; adb pull /sdcard/ui7b.xml ui7b.xml >/dev/null 2>&1 || true
+            python3 .github/scripts/tap_text.py ui7b.xml "Just once" || true
+            for TRY in 1 2 3; do sleep 4; adb shell uiautomator dump /sdcard/ui7r.xml >/dev/null 2>&1; adb pull /sdcard/ui7r.xml ui7r.xml >/dev/null 2>&1 || true; if ! grep -q "Just once" ui7r.xml 2>/dev/null; then echo "cold chooser dispatched on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui7r.xml "Just once" || true; done
+            sleep 4
+            adb shell uiautomator dump /sdcard/ui7g.xml >/dev/null 2>&1; adb pull /sdcard/ui7g.xml ui7g.xml >/dev/null 2>&1 || true
+            python3 .github/scripts/tap_text.py ui7g.xml "Continue Without Account" || true
+            sleep 6
+            adb shell uiautomator dump /sdcard/ui7a.xml >/dev/null 2>&1; adb pull /sdcard/ui7a.xml ui7a.xml >/dev/null 2>&1 || true
+            grep -qE '"Fit"|"Subs"|content-desc="Seek' ui7a.xml && echo "PROBE COLD: PLAYER UI PRESENT" || echo "PROBE COLD: PLAYER UI ABSENT"
+            adb shell dumpsys media_session > ms_ow3.txt 2>&1 || true
+            grep -q "PLAYING(3)" ms_ow3.txt && echo "VERDICT: COLD OPEN-WITH SESSION PLAYING" || echo "VERDICT: COLD OPEN-WITH NO PLAYING SESSION"
+            sleep 5
+            adb shell dumpsys media_session > ms_ow4.txt 2>&1 || true
+            P3=$(grep -o "position=[0-9-]*" ms_ow3.txt | head -1 | cut -d= -f2 || true); P4=$(grep -o "position=[0-9-]*" ms_ow4.txt | head -1 | cut -d= -f2 || true); echo "OWPOS3=$P3 OWPOS4=$P4"; if [ -n "$P3" ] && [ -n "$P4" ] && [ "$P4" -gt "$P3" ]; then echo "VERDICT: COLD OPEN-WITH POSITION ADVANCING"; else echo "VERDICT: COLD OPEN-WITH POSITION NOT ADVANCING"; fi
+            adb exec-out screencap -p > shot_7_cold_openwith.png
             sleep 25
             adb shell dumpsys activity activities | grep -E "topResumedActivity|ResumedActivity" | head -3 || true
             adb exec-out screencap -p > shot_6_openwith_player.png

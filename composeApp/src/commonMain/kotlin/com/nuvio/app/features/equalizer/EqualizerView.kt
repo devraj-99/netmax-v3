@@ -162,8 +162,12 @@ fun EqualizerPanel(
                 visible = state.enabled,
                 enter = fadeIn(),
                 exit = fadeOut(),
+                modifier = Modifier.weight(1f, fill = false),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
                     // Mode Selector: Simple vs 10-Band Advanced
                     Row(
                         modifier = Modifier

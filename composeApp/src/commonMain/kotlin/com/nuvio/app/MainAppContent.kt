@@ -39,7 +39,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -1017,14 +1020,21 @@ internal fun MainAppContent(
             return true
         }
 
-        LaunchedEffect(navController) {
+        val externalOpenLifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(navController, externalOpenLifecycleOwner) {
             if (!ownsAppRuntime) return@LaunchedEffect
-            LocalVideoOpenBus.pendingRequest.collectLatest { request ->
-                if (request == null) return@collectLatest
-                LocalVideoOpenBus.consume(request)
-                val launched = runCatching { launchExternalLocalVideo(request) }.getOrDefault(false)
-                if (!launched) {
-                    NuvioToastController.show(localVideoPlayFailedText)
+            // Only the resumed (foreground) activity instance may consume an external
+            // "Open with" request. With standard launchMode an external VIEW can stack a
+            // second MainActivity; a stopped instance must not steal the request into a
+            // hidden nav controller while the foreground instance shows home.
+            externalOpenLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                LocalVideoOpenBus.pendingRequest.collectLatest { request ->
+                    if (request == null) return@collectLatest
+                    LocalVideoOpenBus.consume(request)
+                    val launched = runCatching { launchExternalLocalVideo(request) }.getOrDefault(false)
+                    if (!launched) {
+                        NuvioToastController.show(localVideoPlayFailedText)
+                    }
                 }
             }
         }
