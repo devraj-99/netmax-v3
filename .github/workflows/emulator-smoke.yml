@@ -1,0 +1,87 @@
+name: Emulator Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-smoke:
+    name: Install APK on emulator and capture UI evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+
+      - name: Download release APK
+        run: |
+          curl -L --fail -o app.apk https://github.com/devraj-99/netmax-v3/releases/download/v3.2.0-1/NetMax-v3.2.0-release.apk
+          ls -la app.apk
+
+      - name: Generate test video
+        run: |
+          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=8:size=640x360:rate=30 -f lavfi -i sine=frequency=440:duration=8 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_local_test.mp4
+          ls -la netmax_local_test.mp4
+
+      - name: Run emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            set -x
+            adb install -r app.apk
+            adb push netmax_local_test.mp4 /sdcard/Movies/netmax_local_test.mp4
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_local_test.mp4 || true
+            sleep 8
+            adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO || true
+            adb shell content query --uri content://media/external/video/media --projection _display_name || true
+            adb shell monkey -p com.nuvio.app -c android.intent.category.LAUNCHER 1
+            sleep 30
+            adb exec-out screencap -p > shot_1_launch.png
+            adb shell uiautomator dump /sdcard/ui1.xml && adb pull /sdcard/ui1.xml ui1.xml || true
+            python3 .github/scripts/tap_text.py ui1.xml "Library" || true
+            sleep 8
+            adb exec-out screencap -p > shot_2_library.png
+            adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml ui2.xml || true
+            python3 .github/scripts/tap_text.py ui2.xml "Local" || true
+            sleep 10
+            adb exec-out screencap -p > shot_3_local_tab.png
+            adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
+            python3 .github/scripts/tap_text.py ui3.xml "netmax_local_test" || true
+            sleep 15
+            adb exec-out screencap -p > shot_4_playback.png
+            adb shell uiautomator dump /sdcard/ui4.xml && adb pull /sdcard/ui4.xml ui4.xml || true
+            adb shell input keyevent KEYCODE_HOME
+            sleep 2
+            VID=$(adb shell content query --uri content://media/external/video/media --projection _id --where "_display_name='netmax_local_test.mp4'" | grep -o '[0-9]\+' | head -1) || true
+            echo "MEDIA_ID=$VID"
+            if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*" || true; fi
+            sleep 8
+            adb exec-out screencap -p > shot_5_openwith_picker.png
+            adb shell uiautomator dump /sdcard/ui5.xml && adb pull /sdcard/ui5.xml ui5.xml || true
+            python3 .github/scripts/tap_text.py ui5.xml "NetMax" || python3 .github/scripts/tap_text.py ui5.xml "NETMAX" || true
+            sleep 15
+            adb exec-out screencap -p > shot_6_openwith_player.png
+            adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
+            echo SMOKE_DONE
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-evidence
+          path: |
+            shot_*.png
+            ui*.xml
+          retention-days: 30
