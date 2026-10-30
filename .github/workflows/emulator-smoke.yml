@@ -171,7 +171,7 @@ jobs:
             sleep 3
             adb shell uiautomator dump /sdcard/ui6.xml && adb pull /sdcard/ui6.xml ui6.xml || true
             python3 .github/scripts/tap_text.py ui6.xml "Just once" || true
-            sleep 15
+            sleep 25
             adb exec-out screencap -p > shot_6_openwith_player.png
             adb shell uiautomator dump /sdcard/ui6b.xml && adb pull /sdcard/ui6b.xml ui6b.xml || true
             adb shell dumpsys activity top | grep -i -m3 nuvio || true
