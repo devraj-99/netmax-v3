@@ -51,9 +51,10 @@ jobs:
             sleep 8
             adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO || true
             adb shell content query --uri content://media/external/video/media --projection _display_name || true
-            adb shell monkey -p com.nuvio.app -c android.intent.category.LAUNCHER 1
-            sleep 25
-            for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 2; adb shell monkey -p com.nuvio.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 18; done
+            adb shell settings put global window_animation_scale 0; adb shell settings put global transition_animation_scale 0; adb shell settings put global animator_duration_scale 0
+            adb shell am start -n com.nuvio.app/.MainActivity
+            sleep 20
+            for TRY in 1 2 3 4 5 6; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; python3 .github/scripts/tap_text.py ui1.xml "Wait" || true; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done
             adb exec-out screencap -p > shot_1_launch.png
             python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account" || true
             sleep 12
@@ -90,6 +91,7 @@ jobs:
             adb exec-out screencap -p > shot_3_local_tab.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
             for TRY in 1 2 3; do if grep -q "netmax_local_test" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
+            adb logcat -c || true
             python3 .github/scripts/tap_text.py ui3.xml "netmax_local_test" || true
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
@@ -112,6 +114,7 @@ jobs:
             adb shell input tap 1200 400 || true
             sleep 2
             adb exec-out screencap -p > shot_4c_equalizer.png
+            adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
             adb shell input keyevent KEYCODE_HOME
             sleep 2
             adb shell content query --uri content://media/external/video/media --projection _id > vidq.txt 2>&1; cat vidq.txt; VID=$(grep -o '_id=[0-9]*' vidq.txt | tail -1 | cut -d= -f2); echo "MEDIA_ID=$VID"; if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*"; fi
