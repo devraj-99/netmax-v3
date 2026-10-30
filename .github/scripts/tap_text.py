@@ -1,12 +1,18 @@
-import sys, re, subprocess
+import sys, re, subprocess, os
 xml = open(sys.argv[1], encoding='utf-8', errors='ignore').read()
 target = sys.argv[2]
+dryrun = os.environ.get('TAP_TEXT_DRYRUN') == '1'
 def bounds_of(tag):
     bm = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
     if not bm:
         return None
     x1, y1, x2, y2 = map(int, bm.groups())
     return (x1 + x2) // 2, (y1 + y2) // 2
+def tap(c, what):
+    if not dryrun:
+        subprocess.run(['adb', 'shell', 'input', 'tap', str(c[0]), str(c[1])], check=True)
+    print('TAPPED', what, c)
+    sys.exit(0)
 tags = re.findall(r'<node\b[^>]*>', xml)
 if target.startswith('@clickable'):
     want = int(target.split(':')[1]) if ':' in target else 0
@@ -14,31 +20,30 @@ if target.startswith('@clickable'):
     if want < len(clickable):
         c = bounds_of(clickable[want])
         if c:
-            subprocess.run(['adb', 'shell', 'input', 'tap', str(c[0]), str(c[1])], check=True)
-            print('TAPPED clickable#%d at' % want, c)
-            sys.exit(0)
+            tap(c, 'clickable#%d at' % want)
     print('NOT FOUND:', target)
     sys.exit(1)
-if target.startswith('@class:'):
-    want_cls = target.split(':', 1)[1]
-    cls_nodes = [t for t in tags if 'class="%s"' % want_cls in t]
-    if cls_nodes:
-        c = bounds_of(cls_nodes[0])
+if target.startswith('@checkable'):
+    nodes = [t for t in tags if 'checkable="true"' in t]
+    if nodes:
+        c = bounds_of(nodes[0])
         if c:
-            subprocess.run(['adb', 'shell', 'input', 'tap', str(c[0]), str(c[1])], check=True)
-            print('TAPPED class=%s at' % want_cls, c)
-            sys.exit(0)
+            tap(c, 'checkable')
     print('NOT FOUND:', target)
     sys.exit(1)
+exact = target.startswith('@exact:')
+if exact:
+    target = target[len('@exact:'):]
 for tag in tags:
-    tm = re.search(r'text="([^"]*)"', tag) or re.search(r'content-desc="([^"]*)"', tag)
-    if not tm:
-        continue
-    if target.lower() in tm.group(1).lower():
-        c = bounds_of(tag)
-        if c:
-            subprocess.run(['adb', 'shell', 'input', 'tap', str(c[0]), str(c[1])], check=True)
-            print('TAPPED', repr(tm.group(1)), c)
-            sys.exit(0)
+    t1 = re.search(r'text="([^"]*)"', tag)
+    t2 = re.search(r'content-desc="([^"]*)"', tag)
+    for cand in (t1.group(1) if t1 else '', t2.group(1) if t2 else ''):
+        if not cand:
+            continue
+        hit = (cand.lower() == target.lower()) if exact else (target.lower() in cand.lower())
+        if hit:
+            c = bounds_of(tag)
+            if c:
+                tap(c, repr(cand))
 print('NOT FOUND:', target)
 sys.exit(1)
