@@ -101,7 +101,7 @@ jobs:
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
             for TRY in 1 2 3; do if grep -q "netmax_zzz_second" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
             adb logcat -c || true
-            python3 .github/scripts/tap_text.py ui3.xml "netmax_zzz_second"
+            python3 .github/scripts/tap_text.py ui3.xml "netmax_aaa_first"
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
             adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
@@ -133,7 +133,11 @@ jobs:
             adb exec-out screencap -p > shot_4b_reel_mode.png
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
             adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
-            sleep 12
+            adb shell input keyevent KEYCODE_BACK || true
+            sleep 4
+            adb shell uiautomator dump /sdcard/ui4d.xml && adb pull /sdcard/ui4d.xml ui4d.xml || true
+            python3 .github/scripts/tap_text.py ui4d.xml "netmax_zzz_second"
+            sleep 17
             adb exec-out screencap -p > shot_4e_autonext.png
             adb shell uiautomator dump /sdcard/ui4e.xml && adb pull /sdcard/ui4e.xml ui4e.xml || true
             adb exec-out screencap -p > shot_4e2_before_home.png
