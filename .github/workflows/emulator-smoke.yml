@@ -68,8 +68,8 @@ jobs:
             python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
             sleep 12
             adb exec-out screencap -p > shot_1b_after_login.png
-            for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1; adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1; if grep -q "Add Profile" ui1b.xml; then break; fi; sleep 6; done
-            python3 .github/scripts/tap_text.py ui1b.xml "Add Profile"
+            for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1; adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1; if grep -q "Who's watching?" ui1b.xml; then break; fi; sleep 6; done; grep -q "Who's watching?" ui1b.xml || { echo "FATAL: profile picker never appeared"; exit 1; }
+            python3 .github/scripts/tap_text.py ui1b.xml @clickable:0
             sleep 15
             adb exec-out screencap -p > shot_1c_home.png
             adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
