@@ -600,6 +600,14 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             }
         }
     }
+
+    LaunchedEffect(playbackSnapshot.isEnded, activeVideoId) {
+        if (!playbackSnapshot.isEnded) return@LaunchedEffect
+        val endedVideoId = activeVideoId ?: return@LaunchedEffect
+        if (parentMetaType != com.nuvio.app.features.localvideos.LocalVideoContentType) return@LaunchedEffect
+        if (!endedVideoId.startsWith("local:")) return@LaunchedEffect
+        com.nuvio.app.features.localvideos.LocalVideoAutoNextBus.emit(endedVideoId)
+    }
 }
 
 private fun PlayerScreenRuntime.buildNowPlayingInfo(): PlayerNowPlayingInfo {

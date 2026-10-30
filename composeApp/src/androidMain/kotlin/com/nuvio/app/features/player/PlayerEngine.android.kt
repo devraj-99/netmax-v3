@@ -443,6 +443,8 @@ private fun ExoPlayerSurface(
             useCustomSubtitles = false,
         )
         com.nuvio.app.features.equalizer.PlatformAudioEqualizer.attachToExoPlayer(context, player)
+        // Keep the CPU alive while audio continues with the screen off (background play).
+        player.setWakeMode(C.WAKE_MODE_LOCAL)
         player
     }
 

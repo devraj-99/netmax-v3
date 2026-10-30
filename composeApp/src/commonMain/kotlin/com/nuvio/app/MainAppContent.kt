@@ -91,9 +91,11 @@ import com.nuvio.app.features.cloud.CloudLibraryPlaybackTargetLookupResult
 import com.nuvio.app.features.cloud.CloudLibraryRepository
 import com.nuvio.app.features.localvideos.LocalVideoContentType
 import com.nuvio.app.features.localvideos.LocalVideoItem
+import com.nuvio.app.features.localvideos.LocalVideoAutoNextBus
 import com.nuvio.app.features.localvideos.LocalVideoOpenBus
 import com.nuvio.app.features.localvideos.LocalVideoOpenRequest
 import com.nuvio.app.features.localvideos.LocalVideosPlatform
+import com.nuvio.app.features.localvideos.LocalVideosRepository
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
 import com.nuvio.app.features.cloud.playbackVideoId
 import com.nuvio.app.features.cloud.providerPosterUrl
@@ -939,7 +941,7 @@ internal fun MainAppContent(
             }
         }
 
-        suspend fun launchLocalVideo(video: LocalVideoItem): Boolean {
+        suspend fun launchLocalVideo(video: LocalVideoItem, replaceCurrentPlayer: Boolean = false): Boolean {
             val playbackTitle = video.title.ifBlank { video.contentUri.substringAfterLast('/') }
             val videoId = "local:${video.id}"
             val resumeItem = WatchProgressRepository
@@ -969,6 +971,9 @@ internal fun MainAppContent(
                 return true
             }
             val launchId = PlayerLaunchStore.put(playerLaunch)
+            if (replaceCurrentPlayer) {
+                navController.popBackStack()
+            }
             navController.navigate(PlayerRoute(launchId = launchId, title = playerLaunch.title))
             return true
         }
@@ -1017,6 +1022,24 @@ internal fun MainAppContent(
                 if (request == null) return@collectLatest
                 LocalVideoOpenBus.consume(request)
                 val launched = runCatching { launchExternalLocalVideo(request) }.getOrDefault(false)
+                if (!launched) {
+                    NuvioToastController.show(localVideoPlayFailedText)
+                }
+            }
+        }
+
+        LaunchedEffect(navController) {
+            if (!ownsAppRuntime) return@LaunchedEffect
+            LocalVideoAutoNextBus.pendingEndedVideoId.collectLatest { endedVideoId ->
+                if (endedVideoId == null) return@collectLatest
+                LocalVideoAutoNextBus.consume(endedVideoId)
+                val videos = LocalVideosRepository.uiState.value.videos
+                val currentIndex = videos.indexOfFirst { "local:${it.id}" == endedVideoId }
+                if (currentIndex < 0 || currentIndex >= videos.lastIndex) return@collectLatest
+                val nextVideo = videos[currentIndex + 1]
+                val launched = runCatching {
+                    launchLocalVideo(nextVideo, replaceCurrentPlayer = true)
+                }.getOrDefault(false)
                 if (!launched) {
                     NuvioToastController.show(localVideoPlayFailedText)
                 }
