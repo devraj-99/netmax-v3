@@ -31,7 +31,7 @@ jobs:
       - name: Generate test video
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
-          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=8:size=640x360:rate=30 -f lavfi -i sine=frequency=440:duration=8 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_local_test.mp4
+          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=240:size=640x360:rate=30 -f lavfi -i sine=frequency=440:duration=240 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_local_test.mp4
           ls -la netmax_local_test.mp4
 
       - name: Run emulator smoke test
@@ -95,19 +95,24 @@ jobs:
             python3 .github/scripts/tap_text.py ui3.xml "netmax_local_test" || true
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
+            adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
+            echo "=== audioflinger during playback: sessions ==="
+            grep -iE "session|standby" audioflinger.txt | head -25 || true
+            echo "=== audioflinger during playback: effects ==="
+            grep -iE "equalizer|bass|virtualizer|Effect|effect" audioflinger.txt | head -40 || true
             adb shell uiautomator dump /sdcard/ui4.xml && adb pull /sdcard/ui4.xml ui4.xml || true
             python3 .github/scripts/tap_text.py ui4.xml "Got it" || true
             sleep 3
             adb shell input tap 1200 540 || true
             sleep 3
             adb shell uiautomator dump /sdcard/ui4a2.xml && adb pull /sdcard/ui4a2.xml ui4a2.xml || true
-            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || adb shell input tap 1626 135 || true
+            python3 .github/scripts/tap_text.py ui4a2.xml "Reel mode" || { adb shell input tap 1200 540; sleep 1; adb shell input tap 1626 135; } || true
             sleep 6
             adb shell input tap 1200 540 || true
             sleep 3
             adb exec-out screencap -p > shot_4b_reel_mode.png
             adb shell uiautomator dump /sdcard/ui4c.xml && adb pull /sdcard/ui4c.xml ui4c.xml || true
-            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || adb shell input tap 1740 135 || true
+            python3 .github/scripts/tap_text.py ui4c.xml "Equalizer" || { adb shell input tap 1200 540; sleep 1; adb shell input tap 1740 135; } || true
             sleep 2
             adb shell input tap 1200 540 || true
             sleep 1
