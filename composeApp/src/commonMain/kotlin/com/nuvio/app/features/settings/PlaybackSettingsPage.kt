@@ -1093,6 +1093,14 @@ private fun PlaybackSettingsSection(
                     isTablet = isTablet,
                     onCheckedChange = PlayerSettingsRepository::setStreamAutoPlayNextEpisodeEnabled,
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_auto_play_next_local_video),
+                    description = stringResource(Res.string.settings_playback_auto_play_next_local_video_description),
+                    checked = autoPlayPlayerSettings.localAutoPlayNextEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setLocalAutoPlayNextEnabled,
+                )
                 if (autoPlayPlayerSettings.streamAutoPlayNextEpisodeEnabled &&
                     autoPlayPlayerSettings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL) {
                     SettingsGroupDivider(isTablet = isTablet)

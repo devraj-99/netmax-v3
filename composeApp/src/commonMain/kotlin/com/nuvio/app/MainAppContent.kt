@@ -311,6 +311,7 @@ internal fun MainAppContent(
     val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
     val cloudLibraryPlayFailedText = stringResource(Res.string.cloud_library_play_failed)
     val localVideoPlayFailedText = stringResource(Res.string.local_video_play_failed)
+    val playingNextToastText = stringResource(Res.string.player_playing_next_toast)
     val localVideosProviderLabel = stringResource(Res.string.local_videos_provider_label)
     val cloudLibraryPlayDisabledText = stringResource(Res.string.cloud_library_play_disabled)
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
@@ -1033,10 +1034,16 @@ internal fun MainAppContent(
             LocalVideoAutoNextBus.pendingEndedVideoId.collectLatest { endedVideoId ->
                 if (endedVideoId == null) return@collectLatest
                 LocalVideoAutoNextBus.consume(endedVideoId)
+                PlayerSettingsRepository.ensureLoaded()
+                if (!PlayerSettingsRepository.uiState.value.localAutoPlayNextEnabled) return@collectLatest
+                // Only advance while the player for the ended video is still on screen;
+                // a user Back press around the end must not be overridden by auto-next.
+                if (navBackStack.lastOrNull() !is PlayerRoute) return@collectLatest
                 val videos = LocalVideosRepository.uiState.value.videos
                 val currentIndex = videos.indexOfFirst { "local:${it.id}" == endedVideoId }
                 if (currentIndex < 0 || currentIndex >= videos.lastIndex) return@collectLatest
                 val nextVideo = videos[currentIndex + 1]
+                NuvioToastController.show("$playingNextToastText ${nextVideo.title}")
                 val launched = runCatching {
                     launchLocalVideo(nextVideo, replaceCurrentPlayer = true)
                 }.getOrDefault(false)

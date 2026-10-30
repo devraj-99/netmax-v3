@@ -1047,6 +1047,9 @@
     <string name="settings_playback_introdb_api_key_description">Enter your IntroDB API key to submit timestamps. Required for submission.</string>
     <string name="settings_playback_anime_skip_description">Also search AnimeSkip for skip timestamps (requires client ID).</string>
     <string name="settings_playback_auto_play_next_episode">Auto-play Next Episode</string>
+    <string name="settings_playback_auto_play_next_local_video">Auto-play Next Local Video</string>
+    <string name="settings_playback_auto_play_next_local_video_description">When a video from this phone ends, automatically play the next one from the Local library list</string>
+    <string name="player_playing_next_toast">Playing next:</string>
     <string name="settings_playback_auto_play_next_episode_description">Start next episode automatically when prompt appears.</string>
     <string name="settings_playback_auto_play_next_episode_fallback">Fallback when binge group fails</string>
     <string name="settings_playback_auto_play_next_episode_fallback_description">Auto-select first available stream if binge group is not found. When off, shows the stream picker instead.</string>
