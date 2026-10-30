@@ -1,5 +1,6 @@
 package com.nuvio.app
 
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -26,6 +27,9 @@ import com.nuvio.app.features.downloads.DownloadsStorage
 import com.nuvio.app.features.library.LibraryDisplaySettingsStorage
 import com.nuvio.app.features.membership.MemberAssetStorage
 import com.nuvio.app.features.library.LibraryStorage
+import com.nuvio.app.features.localvideos.LocalVideoOpenBus
+import com.nuvio.app.features.localvideos.LocalVideoOpenRequest
+import com.nuvio.app.features.localvideos.LocalVideosPlatform
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
 import com.nuvio.app.features.home.HomeCatalogSettingsStorage
 import com.nuvio.app.features.mdblist.MdbListSettingsStorage
@@ -68,6 +72,9 @@ import com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentStorage
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesStorage
 import com.nuvio.app.features.watchprogress.ResumePromptStorage
 import com.nuvio.app.features.watchprogress.WatchProgressStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 open class MainActivity : AppCompatActivity() {
     private var pipRemoteActionReceiver: PipRemoteActionReceiver? = null
@@ -142,9 +149,11 @@ open class MainActivity : AppCompatActivity() {
         DownloadsPlatformDownloader.initialize(applicationContext)
         DownloadsLiveStatusPlatform.initialize(applicationContext)
         AndroidAppUpdaterPlatform.initialize(applicationContext)
+        LocalVideosPlatform.initialize(applicationContext)
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
+        LocalVideosPlatform.bindActivity(this)
         handleIncomingAppIntent(intent)
 
         setContent {
@@ -173,6 +182,7 @@ open class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
+        LocalVideosPlatform.unbindActivity(this)
         val receiver = pipRemoteActionReceiver
         if (receiver != null) {
             runCatching { unregisterReceiver(receiver) }
@@ -189,10 +199,37 @@ open class MainActivity : AppCompatActivity() {
         if (EpisodeReleaseNotificationPlatform.handlePermissionRequestResult(requestCode, grantResults)) {
             return
         }
+        if (LocalVideosPlatform.handlePermissionRequestResult(requestCode)) {
+            return
+        }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun handleIncomingAppIntent(intent: Intent?) {
+        if (intent != null && intent.action == Intent.ACTION_VIEW) {
+            val data = intent.data
+            val type = intent.type?.lowercase()
+            val scheme = data?.scheme?.lowercase()
+            val isLocalVideoUri =
+                scheme == ContentResolver.SCHEME_CONTENT || scheme == ContentResolver.SCHEME_FILE
+            val isVideoIntent = type?.startsWith("video/") == true ||
+                (type == null && isLocalVideoUri)
+            if (data != null && isVideoIntent && scheme != "nuvio" && scheme != "stremio") {
+                val uriString = data.toString()
+                CoroutineScope(Dispatchers.Main).launch {
+                    val displayName = runCatching {
+                        LocalVideosPlatform.displayNameForUri(uriString)
+                    }.getOrNull()
+                    LocalVideoOpenBus.emit(
+                        LocalVideoOpenRequest(
+                            uriString = uriString,
+                            displayName = displayName,
+                        ),
+                    )
+                }
+                return
+            }
+        }
         val appUrl = intent?.dataString?.trim().orEmpty()
         if (appUrl.isBlank()) return
         handleAppUrl(appUrl)

@@ -1845,6 +1845,17 @@
     <string name="library_sort_provider_order">Tracker order</string>
     <string name="library_source_cloud">Cloud</string>
     <string name="library_source_saved">Saved</string>
+    <string name="library_source_local">Local</string>
+    <string name="local_videos_permission_title">Videos on this phone</string>
+    <string name="local_videos_permission_message">Allow NETMAX to show the videos stored on this phone so you can play them here, just like MX Player.</string>
+    <string name="local_videos_permission_action">Allow access</string>
+    <string name="local_videos_empty_title">No videos found</string>
+    <string name="local_videos_empty_message">Videos saved on this phone will show up here automatically.</string>
+    <string name="local_videos_unsupported_title">Local videos</string>
+    <string name="local_videos_unsupported_message">Playing videos stored on the device is available on Android.</string>
+    <string name="local_videos_refresh">Refresh</string>
+    <string name="local_video_play_failed">Could not play this video</string>
+    <string name="local_videos_provider_label">This phone</string>
     <string name="library_title">Library</string>
     <string name="library_trakt_empty_message">Connect Trakt and save titles to your watchlist or personal lists.</string>
     <string name="library_trakt_empty_title">Your Trakt library is empty</string>

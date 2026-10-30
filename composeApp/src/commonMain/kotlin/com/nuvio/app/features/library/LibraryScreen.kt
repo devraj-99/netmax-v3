@@ -81,6 +81,8 @@ import com.nuvio.app.features.cloud.CloudLibraryFile
 import com.nuvio.app.features.cloud.CloudLibraryItem
 import com.nuvio.app.features.cloud.CloudLibraryItemType
 import com.nuvio.app.features.cloud.CloudLibraryRepository
+import com.nuvio.app.features.localvideos.LocalVideoItem
+import com.nuvio.app.features.localvideos.LocalVideosRepository
 import com.nuvio.app.features.cloud.CloudLibraryUiState
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
@@ -105,6 +107,7 @@ fun LibraryScreen(
     onPosterLongClick: ((LibraryItem, LibrarySection) -> Unit)? = null,
     onSectionViewAllClick: ((LibrarySection, LibrarySortOption) -> Unit)? = null,
     onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
+    onLocalVideoPlay: ((LocalVideoItem) -> Unit)? = null,
     onConnectCloudClick: (() -> Unit)? = null,
     disintegrationRequest: DisintegrationRequest<String>? = null,
 ) {
@@ -113,6 +116,7 @@ fun LibraryScreen(
         LibraryRepository.uiState
     }.collectAsStateWithLifecycle()
     val cloudUiState by CloudLibraryRepository.uiState.collectAsStateWithLifecycle()
+    val localVideosUiState by LocalVideosRepository.uiState.collectAsStateWithLifecycle()
     val cloudSettings by remember {
         DebridSettingsRepository.ensureLoaded()
         DebridSettingsRepository.uiState
@@ -211,9 +215,15 @@ fun LibraryScreen(
     }
 
     LaunchedEffect(sourceMode, cloudSettings.cloudLibraryEnabled, cloudSettings.providerApiKeys) {
-        if (sourceMode == LibraryViewMode.Cloud) {
-            CloudLibraryRepository.ensureLoaded()
-            selectedCloudItemKey = null
+        when (sourceMode) {
+            LibraryViewMode.Cloud -> {
+                CloudLibraryRepository.ensureLoaded()
+                selectedCloudItemKey = null
+            }
+            LibraryViewMode.Local -> {
+                LocalVideosRepository.ensureLoaded()
+            }
+            else -> Unit
         }
     }
 
@@ -255,7 +265,7 @@ fun LibraryScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         NuvioScreenHeader(
-                            title = if (sourceMode == LibraryViewMode.Cloud) {
+                            title = if (sourceMode == LibraryViewMode.Cloud || sourceMode == LibraryViewMode.Local) {
                                 stringResource(Res.string.library_title)
                             } else {
                                 when (uiState.sourceMode) {
@@ -312,7 +322,12 @@ fun LibraryScreen(
                 }
             }
 
-            if (sourceMode == LibraryViewMode.Cloud) {
+            if (sourceMode == LibraryViewMode.Local) {
+                localVideosContent(
+                    uiState = localVideosUiState,
+                    onVideoClick = { video -> onLocalVideoPlay?.invoke(video) },
+                )
+            } else if (sourceMode == LibraryViewMode.Cloud) {
                 cloudLibraryContent(
                     uiState = cloudUiState,
                     selectedProviderId = selectedProviderId,
@@ -665,6 +680,11 @@ private fun LibrarySourceSwitch(
             label = stringResource(Res.string.library_source_cloud),
             selected = selectedMode == LibraryViewMode.Cloud,
             onClick = { onModeSelected(LibraryViewMode.Cloud) },
+        )
+        LibraryChip(
+            label = stringResource(Res.string.library_source_local),
+            selected = selectedMode == LibraryViewMode.Local,
+            onClick = { onModeSelected(LibraryViewMode.Local) },
         )
     }
 }
@@ -1186,6 +1206,7 @@ private fun CloudSkeletonBlock(
 private enum class LibraryViewMode {
     Saved,
     Cloud,
+    Local,
 }
 
 private fun LazyListScope.librarySections(

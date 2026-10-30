@@ -23,8 +23,14 @@ import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
-private const val gitHubOwner = "devendrsinghchundawat78-ship-it"
-private const val gitHubRepo = "netmax-v3"
+// New releases are published from the second GitHub account; the original
+// main-account repo stays as a legacy channel so already-installed builds keep
+// seeing any release published there. Both feeds are checked and the newest
+// version tag wins, so no installed channel is orphaned.
+private val gitHubReleaseRepos = listOf(
+    "devraj-99" to "netmax-v3",
+    "devendrsinghchundawat78-ship-it" to "netmax-v3",
+)
 private const val gitHubApiBase = "https://api.github.com"
 private const val releaseChannelBranch = "main"
 
@@ -124,22 +130,40 @@ private object VersionUtils {
 
 private object AppUpdaterRepository {
     suspend fun getLatestChannelUpdate(): Result<AppUpdate> = runCatching {
-        val response = httpRequestRaw(
-            method = "GET",
-            url = "$gitHubApiBase/repos/$gitHubOwner/$gitHubRepo/releases?per_page=20",
-            headers = mapOf(
-                "Accept" to "application/vnd.github+json",
-                "User-Agent" to "NetMaxMobile",
-            ),
-            body = "",
-        )
-        if (response.status !in 200..299) {
-            error(getString(Res.string.updates_github_api_error, response.status))
+        val candidates = mutableListOf<GitHubReleaseDto>()
+        var sawSuccess = false
+        var lastStatus = -1
+        for ((owner, repo) in gitHubReleaseRepos) {
+            val response = httpRequestRaw(
+                method = "GET",
+                url = "$gitHubApiBase/repos/$owner/$repo/releases?per_page=20",
+                headers = mapOf(
+                    "Accept" to "application/vnd.github+json",
+                    "User-Agent" to "NetMaxMobile",
+                ),
+                body = "",
+            )
+            lastStatus = response.status
+            if (response.status !in 200..299) continue
+            sawSuccess = true
+            val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(response.body)
+            candidates += releases.filter { it.matchesRequestedChannel() && !it.draft && !it.prerelease }
+        }
+        if (!sawSuccess) {
+            error(getString(Res.string.updates_github_api_error, lastStatus))
         }
 
-        val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(response.body)
-        val release = releases.firstOrNull { it.matchesRequestedChannel() && !it.draft && !it.prerelease }
-            ?: throw NoChannelReleaseException()
+        val release = candidates.maxByOrNull { candidate ->
+            val candidateTag = candidate.tagName?.takeIf { it.isNotBlank() }
+                ?: candidate.name?.takeIf { it.isNotBlank() }
+                ?: ""
+            candidateTag
+                .removePrefix("v")
+                .split('.', '-', '+')
+                .mapNotNull { it.takeWhile(Char::isDigit).toIntOrNull() }
+                .let { parts -> List(4) { index -> parts.getOrElse(index) { 0 } } }
+                .fold(0L) { acc, part -> acc * 10000 + part }
+        } ?: throw NoChannelReleaseException()
 
         val tag = release.tagName?.takeIf { it.isNotBlank() }
             ?: release.name?.takeIf { it.isNotBlank() }

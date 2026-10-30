@@ -89,6 +89,11 @@ import com.nuvio.app.features.cloud.CloudLibraryItem
 import com.nuvio.app.features.cloud.CloudLibraryPlaybackResult
 import com.nuvio.app.features.cloud.CloudLibraryPlaybackTargetLookupResult
 import com.nuvio.app.features.cloud.CloudLibraryRepository
+import com.nuvio.app.features.localvideos.LocalVideoContentType
+import com.nuvio.app.features.localvideos.LocalVideoItem
+import com.nuvio.app.features.localvideos.LocalVideoOpenBus
+import com.nuvio.app.features.localvideos.LocalVideoOpenRequest
+import com.nuvio.app.features.localvideos.LocalVideosPlatform
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
 import com.nuvio.app.features.cloud.playbackVideoId
 import com.nuvio.app.features.cloud.providerPosterUrl
@@ -303,6 +308,8 @@ internal fun MainAppContent(
     val externalPlayerFailedText = stringResource(Res.string.external_player_failed)
     val failedOpenBrowserText = stringResource(Res.string.settings_trakt_failed_open_browser)
     val cloudLibraryPlayFailedText = stringResource(Res.string.cloud_library_play_failed)
+    val localVideoPlayFailedText = stringResource(Res.string.local_video_play_failed)
+    val localVideosProviderLabel = stringResource(Res.string.local_videos_provider_label)
     val cloudLibraryPlayDisabledText = stringResource(Res.string.cloud_library_play_disabled)
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
     val nativeTabHomeTitle = stringResource(Res.string.compose_nav_home)
@@ -932,6 +939,90 @@ internal fun MainAppContent(
             }
         }
 
+        suspend fun launchLocalVideo(video: LocalVideoItem): Boolean {
+            val playbackTitle = video.title.ifBlank { video.contentUri.substringAfterLast('/') }
+            val videoId = "local:${video.id}"
+            val resumeItem = WatchProgressRepository
+                .progressForVideo(
+                    videoId = videoId,
+                    parentMetaId = videoId,
+                )
+                ?.takeIf { it.isResumable }
+                ?.toContinueWatchingItem()
+            val playerLaunch = PlayerLaunch(
+                profileId = activePlaybackProfileId,
+                title = playbackTitle,
+                sourceUrl = video.contentUri,
+                streamTitle = playbackTitle,
+                streamSubtitle = null,
+                providerName = localVideosProviderLabel,
+                providerAddonId = "local:device",
+                contentType = LocalVideoContentType,
+                videoId = videoId,
+                parentMetaId = videoId,
+                parentMetaType = LocalVideoContentType,
+                initialPositionMs = resumeItem?.resumePositionMs ?: 0L,
+                initialProgressFraction = resumeItem?.resumeProgressFraction,
+            )
+            if (playerSettingsUiState.externalPlayerEnabled) {
+                openExternalPlayback(playerLaunch)
+                return true
+            }
+            val launchId = PlayerLaunchStore.put(playerLaunch)
+            navController.navigate(PlayerRoute(launchId = launchId, title = playerLaunch.title))
+            return true
+        }
+
+        suspend fun launchExternalLocalVideo(request: LocalVideoOpenRequest): Boolean {
+            val rawTitle = request.displayName
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: request.uriString.substringAfterLast('/').ifBlank { request.uriString }
+            val playbackTitle = rawTitle.substringBeforeLast('.').ifBlank { rawTitle }
+            val videoId = "local:external:${request.uriString.hashCode()}"
+            val resumeItem = WatchProgressRepository
+                .progressForVideo(
+                    videoId = videoId,
+                    parentMetaId = videoId,
+                )
+                ?.takeIf { it.isResumable }
+                ?.toContinueWatchingItem()
+            val playerLaunch = PlayerLaunch(
+                profileId = activePlaybackProfileId,
+                title = playbackTitle,
+                sourceUrl = request.uriString,
+                streamTitle = playbackTitle,
+                streamSubtitle = null,
+                providerName = localVideosProviderLabel,
+                providerAddonId = "local:device",
+                contentType = LocalVideoContentType,
+                videoId = videoId,
+                parentMetaId = videoId,
+                parentMetaType = LocalVideoContentType,
+                initialPositionMs = resumeItem?.resumePositionMs ?: 0L,
+                initialProgressFraction = resumeItem?.resumeProgressFraction,
+            )
+            if (playerSettingsUiState.externalPlayerEnabled) {
+                openExternalPlayback(playerLaunch)
+                return true
+            }
+            val launchId = PlayerLaunchStore.put(playerLaunch)
+            navController.navigate(PlayerRoute(launchId = launchId, title = playerLaunch.title))
+            return true
+        }
+
+        LaunchedEffect(navController) {
+            if (!ownsAppRuntime) return@LaunchedEffect
+            LocalVideoOpenBus.pendingRequest.collectLatest { request ->
+                if (request == null) return@collectLatest
+                LocalVideoOpenBus.consume(request)
+                val launched = runCatching { launchExternalLocalVideo(request) }.getOrDefault(false)
+                if (!launched) {
+                    NuvioToastController.show(localVideoPlayFailedText)
+                }
+            }
+        }
+
         fun launchPlaybackWithDownloadPreference(
             type: String,
             videoId: String,
@@ -1321,6 +1412,13 @@ internal fun MainAppContent(
                                             )
                                         ) {
                                             NuvioToastController.show(cloudLibraryPlayFailedText)
+                                        }
+                                    }
+                                },
+                                onLocalVideoPlay = { video ->
+                                    coroutineScope.launch {
+                                        if (!launchLocalVideo(video)) {
+                                            NuvioToastController.show(localVideoPlayFailedText)
                                         }
                                     }
                                 },

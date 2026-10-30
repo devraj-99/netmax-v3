@@ -46,6 +46,7 @@ import com.nuvio.app.features.home.HomeScreen
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.youtube.YouTubeVideoItem
 import com.nuvio.app.features.library.LibraryItem
+import com.nuvio.app.features.localvideos.LocalVideoItem
 import com.nuvio.app.features.library.LibraryScreen
 import com.nuvio.app.features.library.LibrarySection
 import com.nuvio.app.features.library.LibrarySortOption
@@ -120,6 +121,7 @@ internal data class AppTabActions(
     val onLibraryPosterLongClick: ((LibraryItem, LibrarySection) -> Unit)? = null,
     val onLibrarySectionViewAllClick: ((LibrarySection, LibrarySortOption) -> Unit)? = null,
     val onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
+    val onLocalVideoPlay: ((LocalVideoItem) -> Unit)? = null,
     val onConnectCloudClick: (() -> Unit)? = null,
     val onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     val onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
@@ -210,6 +212,7 @@ internal fun AppTabHost(
                         onPosterLongClick = actions.onLibraryPosterLongClick,
                         onSectionViewAllClick = actions.onLibrarySectionViewAllClick,
                         onCloudFilePlay = actions.onCloudFilePlay,
+                        onLocalVideoPlay = actions.onLocalVideoPlay,
                         onConnectCloudClick = actions.onConnectCloudClick,
                         disintegrationRequest = state.libraryDisintegrationRequest,
                     )
