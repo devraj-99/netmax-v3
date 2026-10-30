@@ -25,6 +25,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.roundToInt
 
+/** Reference-counted orientation lock so an incoming player screen and an outgoing one
+ *  (navigation transition overlap, e.g. local auto-next replacing the player) do not race:
+ *  the outgoing screen must not restore the pre-player orientation while a replacement
+ *  player is already composed, otherwise the successor opens in the wrong orientation. */
+private var activeOrientationLocks = 0
+private var savedPrePlayerOrientation: Int? = null
+
 @Composable
 actual fun LockPlayerToLandscape() {
     val activity = LocalContext.current.findActivity() ?: return
@@ -32,14 +39,21 @@ actual fun LockPlayerToLandscape() {
     val orientationMode = PlayerOrientationPreference.mode.value
 
     DisposableEffect(activity, orientationMode) {
-        val previousOrientation = activity.requestedOrientation
+        if (activeOrientationLocks == 0) {
+            savedPrePlayerOrientation = activity.requestedOrientation
+        }
+        activeOrientationLocks++
         activity.requestedOrientation = when (orientationMode) {
             PlayerOrientationMode.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             PlayerOrientationMode.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
 
         onDispose {
-            activity.requestedOrientation = previousOrientation
+            activeOrientationLocks--
+            if (activeOrientationLocks == 0) {
+                savedPrePlayerOrientation?.let { activity.requestedOrientation = it }
+                savedPrePlayerOrientation = null
+            }
         }
     }
 }
