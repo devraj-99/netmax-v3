@@ -115,6 +115,12 @@ jobs:
             sleep 2
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
+            adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
+            echo "=== audio sessions in playback tracks ==="
+            grep -iE "session" audioflinger.txt | head -20 || true
+            echo "=== effect chains ==="
+            grep -iE "equalizer|bass|virtualizer|effect" audioflinger.txt | head -30 || true
+            cp audioflinger.txt shot_4d_audioflinger.txt 2>/dev/null || true
             adb shell input keyevent KEYCODE_HOME
             sleep 2
             adb shell content query --uri content://media/external/video/media --projection _id > vidq.txt 2>&1; cat vidq.txt; VID=$(grep -o '_id=[0-9]*' vidq.txt | tail -1 | cut -d= -f2); echo "MEDIA_ID=$VID"; if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*"; fi
