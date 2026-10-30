@@ -31,7 +31,9 @@ jobs:
       - name: Generate test video
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
-          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=240:size=640x360:rate=30 -f lavfi -i sine=frequency=440:duration=240 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_local_test.mp4
+          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=120:size=640x360:rate=30 -f lavfi -i sine=frequency=440:duration=120 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_aaa_first.mp4
+          ffmpeg -y -loglevel error -f lavfi -i testsrc=duration=15:size=640x360:rate=30 -f lavfi -i sine=frequency=880:duration=15 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest netmax_zzz_second.mp4
+          cp netmax_zzz_second.mp4 netmax_local_test.mp4
           ls -la netmax_local_test.mp4
 
       - name: Run emulator smoke test
@@ -46,6 +48,12 @@ jobs:
           script: |
             set -x
             adb install -r app.apk
+            adb push netmax_aaa_first.mp4 /sdcard/Movies/netmax_aaa_first.mp4
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_aaa_first.mp4 || true
+            sleep 3
+            adb push netmax_zzz_second.mp4 /sdcard/Movies/netmax_zzz_second.mp4
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_zzz_second.mp4 || true
+            sleep 3
             adb push netmax_local_test.mp4 /sdcard/Movies/netmax_local_test.mp4
             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/netmax_local_test.mp4 || true
             sleep 8
@@ -90,9 +98,9 @@ jobs:
             sleep 10
             adb exec-out screencap -p > shot_3_local_tab.png
             adb shell uiautomator dump /sdcard/ui3.xml && adb pull /sdcard/ui3.xml ui3.xml || true
-            for TRY in 1 2 3; do if grep -q "netmax_local_test" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
+            for TRY in 1 2 3; do if grep -q "netmax_zzz_second" ui3.xml; then break; fi; adb shell uiautomator dump /sdcard/ui3.xml >/dev/null 2>&1; adb pull /sdcard/ui3.xml ui3.xml >/dev/null 2>&1; sleep 6; done
             adb logcat -c || true
-            python3 .github/scripts/tap_text.py ui3.xml "netmax_local_test" || true
+            python3 .github/scripts/tap_text.py ui3.xml "netmax_zzz_second" || true
             sleep 15
             adb exec-out screencap -p > shot_4_playback.png
             adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
@@ -120,6 +128,18 @@ jobs:
             sleep 2
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb logcat -d | grep -i AudioEqualizer || echo "NO AudioEqualizer warnings in logcat (attach path threw nothing)"
+            sleep 12
+            adb exec-out screencap -p > shot_4e_autonext.png
+            adb shell uiautomator dump /sdcard/ui4e.xml && adb pull /sdcard/ui4e.xml ui4e.xml || true
+            adb shell input keyevent KEYCODE_HOME
+            sleep 10
+            adb shell dumpsys media.audio_flinger > audioflinger_bg.txt 2>&1 || true
+            echo "=== audioflinger while app backgrounded ==="
+            grep -iE "thread|standby|session" audioflinger_bg.txt | head -30 || true
+            cp audioflinger_bg.txt shot_4f_audioflinger_bg.txt 2>/dev/null || true
+            adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1
+            sleep 5
+            adb exec-out screencap -p > shot_4g_background_return.png
             adb shell dumpsys media.audio_flinger > audioflinger.txt 2>&1 || true
             echo "=== audio sessions in playback tracks ==="
             grep -iE "session" audioflinger.txt | head -20 || true
