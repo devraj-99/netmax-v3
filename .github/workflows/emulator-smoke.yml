@@ -63,7 +63,18 @@ jobs:
             sleep 15
             adb exec-out screencap -p > shot_1c_home.png
             adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
-            python3 .github/scripts/tap_text.py ui1c.xml "Library" || true
+            python3 .github/scripts/tap_text.py ui1c.xml "Add Profile" || true
+            sleep 8
+            adb exec-out screencap -p > shot_1d_addprofile.png
+            adb shell uiautomator dump /sdcard/ui1d.xml && adb pull /sdcard/ui1d.xml ui1d.xml || true
+            python3 .github/scripts/tap_text.py ui1d.xml "Save" || python3 .github/scripts/tap_text.py ui1d.xml "Create" || python3 .github/scripts/tap_text.py ui1d.xml "Done" || python3 .github/scripts/tap_text.py ui1d.xml "Continue" || true
+            sleep 6
+            adb shell uiautomator dump /sdcard/ui1e.xml && adb pull /sdcard/ui1e.xml ui1e.xml || true
+            python3 .github/scripts/tap_text.py ui1e.xml @clickable:0 || true
+            sleep 10
+            adb exec-out screencap -p > shot_1e_home.png
+            adb shell uiautomator dump /sdcard/ui1f.xml && adb pull /sdcard/ui1f.xml ui1f.xml || true
+            python3 .github/scripts/tap_text.py ui1f.xml "Library" || true
             sleep 8
             adb exec-out screencap -p > shot_2_library.png
             adb shell uiautomator dump /sdcard/ui2.xml && adb pull /sdcard/ui2.xml ui2.xml || true
@@ -87,6 +98,7 @@ jobs:
             adb exec-out screencap -p > shot_4c_equalizer.png
             adb shell input keyevent KEYCODE_HOME
             sleep 2
+            adb shell content query --uri content://media/external/video/media --projection _id || true
             VID=$(adb shell content query --uri content://media/external/video/media --projection _id | grep -o '_id=[0-9]*' | tail -1 | cut -d= -f2) || true
             echo "MEDIA_ID=$VID"
             if [ -n "$VID" ]; then adb shell am start -a android.intent.action.VIEW -d "content://media/external/video/media/$VID" -t "video/*" || true; fi
