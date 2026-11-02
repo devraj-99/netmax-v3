@@ -35,9 +35,13 @@ jobs:
       - name: Prepare distinct long external file and check script
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
-          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=640x360:rate=24 -f lavfi -i sine=frequency=660:duration=180 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -g 48 -c:a aac -shortest -movflags +faststart seektest_mp4.mp4
-          ffmpeg -y -loglevel error -i seektest_mp4.mp4 -c copy seektest_mkv.mkv
-          ffmpeg -y -loglevel error -i seektest_mp4.mp4 -c copy -f mpegts seektest_ts.ts
+          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=640x360:rate=24 -f lavfi -i sine=frequency=660:duration=180 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -g 240 -c:a aac -shortest -movflags +faststart base.mp4
+          ffmpeg -y -loglevel error -i base.mp4 -c copy seektest_mp4nf.mp4
+          ffmpeg -y -loglevel error -i base.mp4 -c:v mpeg4 -q:v 5 -c:a mp3 seektest_avi.avi
+          ffmpeg -y -loglevel error -i base.mp4 -c:v mpeg2video -q:v 5 -c:a mp2 -f mpeg seektest_mpg.mpg
+          ffmpeg -y -loglevel error -i base.mp4 -c:v flv -q:v 5 -c:a mp3 seektest_flv.flv
+          ffmpeg -y -loglevel error -i base.mp4 -c:v libvpx -b:v 600k -deadline realtime -c:a libvorbis seektest_webm.webm
+          ffmpeg -y -loglevel error -i base.mp4 -c:v mpeg4 -q:v 5 -c:a aac -f 3gp seektest_3gp.3gp
           cat > /tmp/external-check.sh <<'CHECK'
           set -eux
           adb install -r app.apk
@@ -70,11 +74,12 @@ jobs:
           adb exec-out screencap -p > shot_1e_home.png
           adb shell uiautomator dump /sdcard/ui1e.xml && adb pull /sdcard/ui1e.xml ui1e.xml || true
           
-          for FMT in mp4 mkv ts; do
+          for FMT in mp4nf avi mpg flv webm 3gp; do
             adb shell am force-stop com.nuvio.app
             sleep 2
-            adb push seektest_$FMT.* /sdcard/Movies/ >/dev/null
-            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/seektest_$FMT.$FMT >/dev/null || true
+            F=$(ls seektest_$FMT.* | head -1); EXT="${F##*.}"
+            adb push "$F" /sdcard/Movies/ >/dev/null
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Movies/$F" >/dev/null || true
             sleep 6
             adb shell content query --uri content://media/external/video/media --projection _id:_display_name > "$FMT-uri.txt"
             VID=$(grep "seektest_$FMT" "$FMT-uri.txt" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
@@ -82,30 +87,20 @@ jobs:
             URI="content://media/external/video/media/$VID"
             echo "=== $FMT DISPATCH $URI ==="
             adb logcat -c || true
-            MIME=video/mp4; [ "$FMT" = mkv ] && MIME=video/x-matroska; [ "$FMT" = ts ] && MIME=video/mp2t
-            adb shell am start -a android.intent.action.VIEW -d "$URI" -t $MIME --grant-read-uri-permission
+            MIME=$(adb shell content query --uri $URI --projection mime_type | sed -n 's/.*mime_type=\([^,]*\).*/\1/p' | head -1); [ -n "$MIME" ] || MIME=video/mp4
+            adb shell am start -a android.intent.action.VIEW -d "$URI" -t "$MIME" --grant-read-uri-permission
             sleep 4
             python3 .github/scripts/tap_text.py @live "NetMax" || true
             python3 .github/scripts/tap_text.py @live "Just once" || true
             sleep 6
             adb shell uiautomator dump /sdcard/g.xml >/dev/null 2>&1; adb pull /sdcard/g.xml g.xml >/dev/null 2>&1; python3 .github/scripts/tap_text.py g.xml "Got it" || true
-            sleep 6
-            python3 .github/scripts/media_pos.py "$FMT before_seek"
-            adb shell input tap 1200 540
-            sleep 1
-            adb exec-out screencap -p > "shot_${FMT}_controls.png"
-            python3 .github/scripts/seek_drag.py 0.70 || true
-            for S in 1 2 3 4 5 6; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek_${S}"; done
-            adb exec-out screencap -p > "shot_${FMT}_after_seek.png"
-            # second seek: back to 30 percent
-            adb shell input tap 1200 540
-            sleep 1
-            python3 .github/scripts/seek_drag.py 0.30 || true
-            for S in 1 2 3 4; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek2_${S}"; done
-            adb logcat -d > "logcat_$FMT.txt"
-            grep -E "prepare begin|error attempt|state=" "logcat_$FMT.txt" | tail -25 || true
+            sleep 8
+            python3 .github/scripts/media_pos.py "$FMT before"
+            for K in 1 2 3; do adb shell input tap 1950 540; sleep 0.12; adb shell input tap 1950 540; sleep 0.6; done
+            for S in 1 2 3 4; do sleep 1.5; python3 .github/scripts/media_pos.py "$FMT after_forward_${S}"; done
+            adb exec-out screencap -p > "shot_${FMT}_after.png"
+            grep -E "prepare begin|error attempt" <(adb logcat -d) | cut -c1-260 | tail -6 || true
           done
-          echo done
           adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
           CHECK
       - name: Verify warm and cold external VIEW
