@@ -1,0 +1,128 @@
+name: Seek Regression Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: APK URL to test
+        default: https://github.com/devraj-99/netmax-v3/releases/download/v3.4.3-8/NetMax-v3.4.3-release.apk
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-smoke:
+    name: Install APK on emulator and capture UI evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+
+      - name: Download release APK
+        run: |
+          APK_URL='${{ github.event.inputs.apk_url }}'
+          echo "APK_URL=$APK_URL"
+          curl -L --fail -o app.apk "$APK_URL"
+          ls -la app.apk
+
+      - name: Prepare distinct long external file and check script
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=640x360:rate=24 -f lavfi -i sine=frequency=660:duration=180 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -g 48 -c:a aac -shortest -movflags +faststart seektest_mp4.mp4
+          ffmpeg -y -loglevel error -i seektest_mp4.mp4 -c copy seektest_mkv.mkv
+          ffmpeg -y -loglevel error -i seektest_mp4.mp4 -c copy -f mpegts seektest_ts.ts
+          cat > /tmp/external-check.sh <<'CHECK'
+          set -eux
+          adb install -r app.apk
+                    adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO
+          adb shell am start -n com.nuvio.app/.MainActivity
+          sleep 20
+          for TRY in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1; adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1; if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi; if grep -q "isn't responding" ui1.xml; then if grep -q "nuvio" ui1.xml; then echo "FATAL: NETMAX ANR"; else echo "non-app ANR dialog (launcher), closing it"; python3 .github/scripts/tap_text.py ui1.xml "Close app" || true; fi; fi; sleep 12; adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1; sleep 15; done; grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; adb exec-out screencap -p > shot_0_launch_fail.png; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" > launch_fail_focus.txt 2>&1; adb shell dumpsys activity top | head -80 > launch_fail_top.txt 2>&1; adb shell ps -A | grep -i nuvio > launch_fail_ps.txt 2>&1; adb logcat -d > logcat_launch_fail.txt 2>&1; adb shell dumpsys package com.nuvio.app | grep -E "versionCode|firstInstallTime|lastUpdateTime" > launch_fail_pkg.txt 2>&1; exit 1; }
+          adb exec-out screencap -p > shot_1_launch.png
+          python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
+          sleep 12
+          adb exec-out screencap -p > shot_1b_after_login.png
+          for TRY in 1 2 3 4; do adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1; adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1; if grep -q "Who's watching?" ui1b.xml; then break; fi; sleep 6; done; grep -q "Who's watching?" ui1b.xml || { echo "FATAL: profile picker never appeared"; exit 1; }
+          python3 .github/scripts/tap_text.py ui1b.xml @clickable:0
+          sleep 15
+          adb exec-out screencap -p > shot_1c_home.png
+          adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
+          python3 .github/scripts/tap_text.py ui1c.xml "Add Profile" || true
+          sleep 8
+          adb exec-out screencap -p > shot_1d_addprofile.png
+          adb shell uiautomator dump /sdcard/ui1d.xml && adb pull /sdcard/ui1d.xml ui1d.xml || true
+          python3 .github/scripts/tap_text.py ui1d.xml "Profile name" || true
+          sleep 2
+          adb shell input text "Smoke" || true
+          sleep 2
+          adb shell input keyevent KEYCODE_BACK || true
+          sleep 2
+          adb shell uiautomator dump /sdcard/ui1d2.xml && adb pull /sdcard/ui1d2.xml ui1d2.xml || true
+          python3 .github/scripts/tap_text.py ui1d2.xml "Create Profile"
+          sleep 10
+          adb exec-out screencap -p > shot_1e_home.png
+          adb shell uiautomator dump /sdcard/ui1e.xml && adb pull /sdcard/ui1e.xml ui1e.xml || true
+          
+          for FMT in mp4 mkv ts; do
+            adb shell am force-stop com.nuvio.app
+            sleep 2
+            adb push seektest_$FMT.* /sdcard/Movies/ >/dev/null
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/seektest_$FMT.$FMT >/dev/null || true
+            sleep 6
+            adb shell content query --uri content://media/external/video/media --projection _id:_display_name > "$FMT-uri.txt"
+            VID=$(grep "seektest_$FMT" "$FMT-uri.txt" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+            [[ "$VID" =~ ^[0-9]+$ ]] || { echo "FATAL no item for $FMT"; cat "$FMT-uri.txt"; continue; }
+            URI="content://media/external/video/media/$VID"
+            echo "=== $FMT DISPATCH $URI ==="
+            adb logcat -c || true
+            MIME=video/mp4; [ "$FMT" = mkv ] && MIME=video/x-matroska; [ "$FMT" = ts ] && MIME=video/mp2t
+            adb shell am start -a android.intent.action.VIEW -d "$URI" -t $MIME --grant-read-uri-permission
+            sleep 4
+            python3 .github/scripts/tap_text.py @live "NetMax" || true
+            python3 .github/scripts/tap_text.py @live "Just once" || true
+            sleep 12
+            python3 .github/scripts/media_pos.py "$FMT before_seek"
+            adb shell input tap 500 300
+            sleep 1
+            adb exec-out screencap -p > "shot_${FMT}_controls.png"
+            python3 .github/scripts/seek_tap.py 0.70 || true
+            for S in 1 2 3 4 5 6; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek_${S}"; done
+            adb exec-out screencap -p > "shot_${FMT}_after_seek.png"
+            # second seek: back to 30 percent
+            adb shell input tap 500 300
+            sleep 1
+            python3 .github/scripts/seek_tap.py 0.30 || true
+            for S in 1 2 3 4; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek2_${S}"; done
+            adb logcat -d > "logcat_$FMT.txt"
+            grep -E "prepare begin|error attempt|state=" "logcat_$FMT.txt" | tail -25 || true
+          done
+          echo done
+          adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
+          CHECK
+      - name: Verify warm and cold external VIEW
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash /tmp/external-check.sh
+      - name: Upload external evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-view-evidence
+          path: |
+            shot_*.png
+            *.xml
+            *.txt
+          retention-days: 30
