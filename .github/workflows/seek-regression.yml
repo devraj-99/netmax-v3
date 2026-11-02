@@ -87,7 +87,9 @@ jobs:
             sleep 4
             python3 .github/scripts/tap_text.py @live "NetMax" || true
             python3 .github/scripts/tap_text.py @live "Just once" || true
-            sleep 12
+            sleep 6
+            adb shell uiautomator dump /sdcard/g.xml >/dev/null 2>&1; adb pull /sdcard/g.xml g.xml >/dev/null 2>&1; python3 .github/scripts/tap_text.py g.xml "Got it" || true
+            sleep 6
             python3 .github/scripts/media_pos.py "$FMT before_seek"
             adb shell input tap 1200 540
             sleep 1
