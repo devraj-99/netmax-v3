@@ -89,14 +89,14 @@ jobs:
             python3 .github/scripts/tap_text.py @live "Just once" || true
             sleep 12
             python3 .github/scripts/media_pos.py "$FMT before_seek"
-            adb shell input tap 500 300
+            adb shell input tap 1200 540
             sleep 1
             adb exec-out screencap -p > "shot_${FMT}_controls.png"
             python3 .github/scripts/seek_tap.py 0.70 || true
             for S in 1 2 3 4 5 6; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek_${S}"; done
             adb exec-out screencap -p > "shot_${FMT}_after_seek.png"
             # second seek: back to 30 percent
-            adb shell input tap 500 300
+            adb shell input tap 1200 540
             sleep 1
             python3 .github/scripts/seek_tap.py 0.30 || true
             for S in 1 2 3 4; do sleep 2; python3 .github/scripts/media_pos.py "$FMT after_seek2_${S}"; done
