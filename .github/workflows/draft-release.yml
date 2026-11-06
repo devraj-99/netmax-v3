@@ -28,6 +28,7 @@ jobs:
       - name: Create DRAFT release (unpublished, collaborators only)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release create "v3.4.4-test-129" NetMax-v3.4.4-release.apk \
             --draft \
