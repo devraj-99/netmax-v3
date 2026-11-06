@@ -1,0 +1,35 @@
+name: Verify Test APK artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download test APK artifact from build run
+        uses: actions/download-artifact@v4
+        with:
+          name: NetMax-Test-APK-v3.4.4-129
+          run-id: 42224680464
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify APK signature, package and version
+        run: |
+          set -e
+          ls -la
+          APK=$(find . -name '*.apk' | head -1)
+          echo "APK=$APK"
+          echo "size_bytes=$(stat -c%s "$APK")"
+          sha256sum "$APK"
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt | sort -V | tail -1)
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          echo "=== aapt badging (package/version) ==="
+          "$AAPT" dump badging "$APK" | head -2
+          echo "=== apksigner cert ==="
+          "$APKSIGNER" verify --print-certs "$APK" | head -5
