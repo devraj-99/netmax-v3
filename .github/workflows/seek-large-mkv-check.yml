@@ -40,25 +40,23 @@ jobs:
       - name: Prepare MKV test files and check script
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg mkvtoolnix >/dev/null
-          # 180s 720p segment, ~5 Mbps -> ~112 MB
-          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=1280x720:rate=30 \
+          # 180s 640x360 segment, 5 Mbps -> ~112 MB (all commands verified locally)
+          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=640x360:rate=24 \
             -f lavfi -i sine=frequency=660:duration=180 \
             -c:v libx264 -preset ultrafast -b:v 5M -pix_fmt yuv420p -g 60 -c:a aac -shortest seg.mkv
           ls -la seg.mkv
           # control: plain copy, keeps cues
           cp seg.mkv ctrl.mkv
-          # no-cues variant (track selectors are FID:TID)
-          mkvmerge -o nocues.mkv --no-cues 0:0 --no-cues 0:1 seg.mkv
-          echo '=== mkvinfo ctrl (cues expected) ==='
-          mkvinfo ctrl.mkv | grep -i -m3 'cue' || { echo 'NO CUES IN CTRL - control invalid'; exit 1; }
-          echo '=== mkvinfo nocues (no cues expected) ==='
-          if mkvinfo nocues.mkv | grep -i -m3 'cue'; then echo 'CUES STILL PRESENT (bad strip)'; exit 1; else echo 'CUES STRIPPED OK'; fi
-          # big file with valid cues: concat 42 copies -> ~4.7 GB, 126 min
-          for i in $(seq 1 42); do echo "file '$PWD/seg.mkv'"; done > list.txt
+          # no-cues variant: --no-cues is a no-argument global flag
+          mkvmerge -o nocues.mkv --no-cues seg.mkv
+          echo '=== cue verification (mkvinfo -v, Cues element) ==='
+          mkvinfo -v ctrl.mkv | grep -q '+ Cues' && echo 'CTRL HAS CUES OK' || { echo 'NO CUES IN CTRL - control invalid'; exit 1; }
+          if mkvinfo -v nocues.mkv | grep -q '+ Cues'; then echo 'CUES STILL PRESENT (bad strip)'; exit 1; else echo 'NOCUES STRIPPED OK'; fi
+          # big file with valid cues: concat 43 copies -> ~4.8 GB, 129 min
+          for i in $(seq 1 43); do echo "file '$PWD/seg.mkv'"; done > list.txt
           ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy big.mkv
           ls -la big.mkv
-          echo '=== mkvinfo big (cues expected) ==='
-          mkvinfo big.mkv | grep -i -m3 'cue' || echo 'NO CUES IN BIG (unexpected)'
+          mkvinfo -v big.mkv | grep -q '+ Cues' && echo 'BIG HAS CUES OK' || { echo 'NO CUES IN BIG - invalid'; exit 1; }
           df -h /
           cat > /tmp/seek-check.sh <<'CHECK'
           set -ux
@@ -171,7 +169,7 @@ jobs:
 
           run_seek_test ctrl ctrl.mkv 180000
           run_seek_test nocues nocues.mkv 180000
-          run_seek_test big big.mkv 7560000
+          run_seek_test big big.mkv 7740000
           df -h /sdcard || true
           adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
           CHECK
