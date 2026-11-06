@@ -1,0 +1,35 @@
+name: Draft release for test APK (owner-only, unpublished)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download verified test APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NetMax-Test-APK-v3.4.4-129
+          run-id: 42224680464
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-verify bytes before upload
+        run: |
+          set -e
+          APK=NetMax-v3.4.4-release.apk
+          test -f "$APK"
+          echo "c72045d9df4a52270b22fc9a395df0b109499aa29c7e73b7c994b8c37812773c  $APK" | sha256sum -c -
+
+      - name: Create DRAFT release (unpublished, collaborators only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v3.4.4-test-129" NetMax-v3.4.4-release.apk \
+            --draft \
+            --title "NetMax v3.4.4 (129) TEST build - seek restart fix, unverified" \
+            --notes "Private TEST build, not a public release. Contains the probe-retry seek-position fix (commit 962d259). versionName 3.4.4, versionCode 129, signed with the persistent NETMAX release key (cert SHA-256 72f359bd...e61e4, same as v3.4.3) so it installs in place over v3.4.3. Whether it fixes the 8GB MKV seek restart is NOT verified - please test and report."
