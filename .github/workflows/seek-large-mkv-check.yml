@@ -47,12 +47,12 @@ jobs:
           ls -la seg.mkv
           # control: plain copy, keeps cues
           cp seg.mkv ctrl.mkv
-          # no-cues variant
-          mkvmerge -o nocues.mkv --no-cues 0: --no-cues 1: seg.mkv
+          # no-cues variant (track selectors are FID:TID)
+          mkvmerge -o nocues.mkv --no-cues 0:0 --no-cues 0:1 seg.mkv
           echo '=== mkvinfo ctrl (cues expected) ==='
-          mkvinfo ctrl.mkv | grep -i -m3 'cue' || echo 'NO CUES IN CTRL (unexpected)'
+          mkvinfo ctrl.mkv | grep -i -m3 'cue' || { echo 'NO CUES IN CTRL - control invalid'; exit 1; }
           echo '=== mkvinfo nocues (no cues expected) ==='
-          mkvinfo nocues.mkv | grep -i -m3 'cue' && echo 'CUES STILL PRESENT (bad strip)' || echo 'CUES STRIPPED OK'
+          if mkvinfo nocues.mkv | grep -i -m3 'cue'; then echo 'CUES STILL PRESENT (bad strip)'; exit 1; else echo 'CUES STRIPPED OK'; fi
           # big file with valid cues: concat 42 copies -> ~4.7 GB, 126 min
           for i in $(seq 1 42); do echo "file '$PWD/seg.mkv'"; done > list.txt
           ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy big.mkv
