@@ -587,6 +587,10 @@ private fun ExoPlayerSurface(
                         }
                         if (probedMime != null) {
                             Log.d(TAG, "Playback failed with source error. Probed MIME type: $probedMime. Retrying...")
+                            // Keep the current position across the probe retry: without this the
+                            // reload starts the video from 0 (user-visible as "seek restarts").
+                            fallbackStartPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                            preserveAudioSelectionForReload("probe-retry")
                             resolvedMediaItem = MediaItem.Builder()
                                 .setUri(sourceUrl)
                                 .setMimeType(probedMime)
