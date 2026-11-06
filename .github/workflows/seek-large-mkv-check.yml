@@ -1,0 +1,199 @@
+name: Seek Large MKV Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: APK URL to test
+        default: https://github.com/devraj-99/netmax-v3/releases/download/v3.4.3-8/NetMax-v3.4.3-release.apk
+
+permissions:
+  contents: read
+
+jobs:
+  seek-large-mkv:
+    name: Reproduce seek restart on large MKV
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h /
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+
+      - name: Download release APK
+        run: |
+          APK_URL='${{ github.event.inputs.apk_url }}'
+          echo "APK_URL=$APK_URL"
+          curl -L --fail -o app.apk "$APK_URL"
+          ls -la app.apk
+
+      - name: Prepare MKV test files and check script
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg mkvtoolnix >/dev/null
+          # 180s 720p segment, ~5 Mbps -> ~112 MB
+          ffmpeg -y -loglevel error -f lavfi -i testsrc2=duration=180:size=1280x720:rate=30 \
+            -f lavfi -i sine=frequency=660:duration=180 \
+            -c:v libx264 -preset ultrafast -b:v 5M -pix_fmt yuv420p -g 60 -c:a aac -shortest seg.mkv
+          ls -la seg.mkv
+          # control: plain copy, keeps cues
+          cp seg.mkv ctrl.mkv
+          # no-cues variant
+          mkvmerge -o nocues.mkv --no-cues 0: --no-cues 1: seg.mkv
+          echo '=== mkvinfo ctrl (cues expected) ==='
+          mkvinfo ctrl.mkv | grep -i -m3 'cue' || echo 'NO CUES IN CTRL (unexpected)'
+          echo '=== mkvinfo nocues (no cues expected) ==='
+          mkvinfo nocues.mkv | grep -i -m3 'cue' && echo 'CUES STILL PRESENT (bad strip)' || echo 'CUES STRIPPED OK'
+          # big file with valid cues: concat 42 copies -> ~4.7 GB, 126 min
+          for i in $(seq 1 42); do echo "file '$PWD/seg.mkv'"; done > list.txt
+          ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy big.mkv
+          ls -la big.mkv
+          echo '=== mkvinfo big (cues expected) ==='
+          mkvinfo big.mkv | grep -i -m3 'cue' || echo 'NO CUES IN BIG (unexpected)'
+          df -h /
+          cat > /tmp/seek-check.sh <<'CHECK'
+          set -ux
+          adb install -r app.apk
+          adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO
+          adb shell am start -n com.nuvio.app/.MainActivity
+          sleep 20
+          for TRY in 1 2 3 4 5 6 7 8; do
+            adb shell uiautomator dump /sdcard/ui1.xml >/dev/null 2>&1
+            adb pull /sdcard/ui1.xml ui1.xml >/dev/null 2>&1
+            if grep -q "Continue Without Account" ui1.xml; then echo "login gate visible on try $TRY"; break; fi
+            if grep -q "isn't responding" ui1.xml; then
+              if grep -q "nuvio" ui1.xml; then echo "FATAL: NETMAX ANR"; else python3 .github/scripts/tap_text.py ui1.xml "Close app" || true; fi
+            fi
+            sleep 12
+            adb shell am start -n com.nuvio.app/.MainActivity >/dev/null 2>&1
+            sleep 15
+          done
+          grep -q "Continue Without Account" ui1.xml || { echo "FATAL: login gate never appeared"; exit 1; }
+          python3 .github/scripts/tap_text.py ui1.xml "Continue Without Account"
+          sleep 12
+          for TRY in 1 2 3 4; do
+            adb shell uiautomator dump /sdcard/ui1b.xml >/dev/null 2>&1
+            adb pull /sdcard/ui1b.xml ui1b.xml >/dev/null 2>&1
+            if grep -q "Who's watching?" ui1b.xml; then break; fi
+            sleep 6
+          done
+          python3 .github/scripts/tap_text.py ui1b.xml @clickable:0 || true
+          sleep 15
+          adb shell uiautomator dump /sdcard/ui1c.xml && adb pull /sdcard/ui1c.xml ui1c.xml || true
+          python3 .github/scripts/tap_text.py ui1c.xml "Add Profile" || true
+          sleep 8
+          adb shell uiautomator dump /sdcard/ui1d.xml && adb pull /sdcard/ui1d.xml ui1d.xml || true
+          python3 .github/scripts/tap_text.py ui1d.xml "Profile name" || true
+          sleep 2
+          adb shell input text "Smoke" || true
+          sleep 2
+          adb shell input keyevent KEYCODE_BACK || true
+          sleep 2
+          adb shell uiautomator dump /sdcard/ui1d2.xml && adb pull /sdcard/ui1d2.xml ui1d2.xml || true
+          python3 .github/scripts/tap_text.py ui1d2.xml "Create Profile" || true
+          sleep 10
+
+          run_seek_test() {
+            NAME="$1"; FILE="$2"; DURMS="$3"
+            echo "===== TEST $NAME ($FILE) ====="
+            adb shell am force-stop com.nuvio.app
+            sleep 2
+            adb push "$FILE" /sdcard/Movies/ || { echo "FATAL push $NAME"; return; }
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Movies/$FILE" >/dev/null || true
+            VID=""
+            for TRY in 1 2 3 4 5 6 7 8 9 10; do
+              sleep 6
+              adb shell content query --uri content://media/external/video/media --projection _id:_display_name > "$NAME-uri.txt" || true
+              VID=$(grep "$FILE" "$NAME-uri.txt" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+              [[ "$VID" =~ ^[0-9]+$ ]] && break
+            done
+            [[ "$VID" =~ ^[0-9]+$ ]] || { echo "FATAL no mediastore item for $NAME"; cat "$NAME-uri.txt"; return; }
+            URI="content://media/external/video/media/$VID"
+            echo "=== $NAME DISPATCH $URI ==="
+            adb logcat -c || true
+            MIME=$(adb shell content query --uri $URI --projection mime_type | sed -n 's/.*mime_type=\([^,]*\).*/\1/p' | head -1); [ -n "$MIME" ] || MIME=video/x-matroska
+            adb shell am start -a android.intent.action.VIEW -d "$URI" -t "$MIME" --grant-read-uri-permission
+            sleep 4
+            python3 .github/scripts/tap_text.py @live "NetMax" || true
+            python3 .github/scripts/tap_text.py @live "Just once" || true
+            sleep 6
+            adb shell uiautomator dump /sdcard/g.xml >/dev/null 2>&1; adb pull /sdcard/g.xml g.xml >/dev/null 2>&1
+            python3 .github/scripts/tap_text.py g.xml "Got it" || true
+            # wait for playback to start (state 3 = playing, position > 0)
+            STARTED=""
+            for TRY in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              sleep 5
+              OUT=$(python3 .github/scripts/media_pos.py "$NAME boot$TRY")
+              echo "$OUT"
+              PS=$(echo "$OUT" | sed -n 's/.*state=\([0-9]*\) position_ms=\([0-9]*\)/\1 \2/p')
+              ST=$(echo $PS | cut -d' ' -f1); PO=$(echo $PS | cut -d' ' -f2)
+              if [ "$ST" = "3" ] && [ "${PO:-0}" -gt 0 ] 2>/dev/null; then STARTED=1; break; fi
+            done
+            [ -n "$STARTED" ] || echo "WARN: $NAME never reached playing state"
+            python3 .github/scripts/media_pos.py "$NAME baseline"
+            # double-tap forward x3 (~+30s expected)
+            for K in 1 2 3; do adb shell input tap 1950 540; sleep 0.12; adb shell input tap 1950 540; sleep 0.6; done
+            MINPOS=999999999
+            for S in 1 2 3 4; do
+              sleep 1.5
+              OUT=$(python3 .github/scripts/media_pos.py "$NAME after_forward_$S"); echo "$OUT"
+              PO=$(echo "$OUT" | sed -n 's/.*position_ms=\([0-9]*\)/\1/p')
+              [ -n "$PO" ] && [ "$PO" -lt "$MINPOS" ] && MINPOS=$PO
+            done
+            if [ "$MINPOS" = 999999999 ]; then echo "VERDICT $NAME doubletap: NO DATA"; elif [ "$MINPOS" -lt 15000 ]; then echo "VERDICT $NAME doubletap: REPRODUCED restart (min_pos=${MINPOS}ms)"; else echo "VERDICT $NAME doubletap: ok (min_pos=${MINPOS}ms)"; fi
+            adb exec-out screencap -p > "shot_${NAME}_after_tap.png" || true
+            # slider drag to 50%
+            python3 .github/scripts/seek_drag.py 0.5 "$DURMS" || echo "drag failed $NAME"
+            MINPOS2=999999999
+            for S in 1 2 3 4; do
+              sleep 2
+              OUT=$(python3 .github/scripts/media_pos.py "$NAME after_drag_$S"); echo "$OUT"
+              PO=$(echo "$OUT" | sed -n 's/.*position_ms=\([0-9]*\)/\1/p')
+              [ -n "$PO" ] && [ "$PO" -lt "$MINPOS2" ] && MINPOS2=$PO
+            done
+            HALF=$((DURMS / 2)); TENPCT=$((DURMS / 10))
+            if [ "$MINPOS2" = 999999999 ]; then echo "VERDICT $NAME slider50: NO DATA"; elif [ "$MINPOS2" -lt "$TENPCT" ]; then echo "VERDICT $NAME slider50: REPRODUCED restart (min_pos=${MINPOS2}ms of dur=${DURMS})"; else echo "VERDICT $NAME slider50: ok (min_pos=${MINPOS2}ms, half=${HALF})"; fi
+            adb exec-out screencap -p > "shot_${NAME}_after_drag.png" || true
+            echo "--- $NAME NuvioPlayerDiag logcat ---"
+            adb logcat -d | grep -E 'NuvioPlayerDiag|NetmaxPlayerDiag' | cut -c1-260 | tail -50 || true
+            adb shell am force-stop com.nuvio.app
+            adb shell rm -f "/sdcard/Movies/$FILE" || true
+          }
+
+          run_seek_test ctrl ctrl.mkv 180000
+          run_seek_test nocues nocues.mkv 180000
+          run_seek_test big big.mkv 7560000
+          df -h /sdcard || true
+          adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
+          CHECK
+      - name: Run seek reproduction on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 8G
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash /tmp/seek-check.sh
+      - name: Upload seek evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seek-large-mkv-evidence
+          path: |
+            shot_*.png
+            *-uri.txt
+            apk-version.txt
+            seekdump_*.xml
+          if-no-files-found: ignore
