@@ -84,4 +84,5 @@ data class EqualizerState(
     val treble: Float = 0f,    // -10f to +10f in simple mode
     val bassBoost: Float = 0f, // 0f to 1f
     val virtualizer: Float = 0f, // 0f to 1f (3D Surround)
+    val volumeBoostPercent: Int = 100, // 100 to 200 (loudness boost beyond system max)
 )

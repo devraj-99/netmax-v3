@@ -1060,6 +1060,12 @@ private fun LibmpvPlayerSurface(
         PlayerSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
 
+    val equalizerState by com.nuvio.app.features.equalizer.EqualizerSettingsRepository.state
+        .collectAsStateWithLifecycle()
+    LaunchedEffect(playerViewRef, equalizerState.volumeBoostPercent) {
+        playerViewRef?.syncVolumeBoost(equalizerState.volumeBoostPercent)
+    }
+
     LaunchedEffect(
         playerViewRef,
         playerSettingsUiState.visualEnhancerEnabled,
@@ -1406,6 +1412,20 @@ private class NuvioLibmpvView(
             "track-list" to MPV.mpvFormat.MPV_FORMAT_NODE,
         )
         props.forEach { (name, format) -> mpv.observeProperty(name, format) }
+    }
+
+    fun syncVolumeBoost(percent: Int) {
+        mpvScope.launch {
+            if (!released.get()) {
+                runCatching {
+                    // Match Android LoudnessEnhancer's linear amplitude target.
+                    mpv.setPropertyDouble(
+                        "volume-gain",
+                        com.nuvio.app.features.equalizer.VolumeBoost.gainDb(percent),
+                    )
+                }.onFailure { Log.w(TAG, "Failed to apply volume boost to MPV", it) }
+            }
+        }
     }
 
     fun syncVisualEnhancer(

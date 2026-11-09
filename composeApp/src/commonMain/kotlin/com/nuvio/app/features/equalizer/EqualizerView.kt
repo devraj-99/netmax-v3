@@ -123,7 +123,7 @@ fun EqualizerPanel(
                     )
                 }
 
-                if (state.enabled) {
+                if (state.enabled || state.volumeBoostPercent > 100) {
                     IconButton(
                         onClick = { EqualizerSettingsRepository.reset() },
                         modifier = Modifier.size(36.dp),
@@ -158,135 +158,142 @@ fun EqualizerPanel(
                 }
             }
 
-            AnimatedVisibility(
-                visible = state.enabled,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.weight(1f, fill = false),
+            Column(
+                modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                if (PlatformAudioEqualizer.supportsVolumeBoost) {
+                    VolumeBoostSection(state = state)
+                }
+
+                AnimatedVisibility(
+                    visible = state.enabled,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                 ) {
-                    // Mode Selector: Simple vs 10-Band Advanced
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Box(
+                        // Mode Selector: Simple vs 10-Band Advanced
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (!state.isAdvanced) MaterialTheme.colorScheme.primary
-                                    else Color.Transparent
-                                )
-                                .clickable { EqualizerSettingsRepository.setAdvancedMode(false) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Text(
-                                text = "Simple (3-Band)",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (!state.isAdvanced) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 12.sp,
-                                ),
-                                color = if (!state.isAdvanced) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (state.isAdvanced) MaterialTheme.colorScheme.primary
-                                    else Color.Transparent
-                                )
-                                .clickable { EqualizerSettingsRepository.setAdvancedMode(true) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "10-Band Graphic EQ",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (state.isAdvanced) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 12.sp,
-                                ),
-                                color = if (state.isAdvanced) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-
-                    // Presets Horizontal Rail
-                    Text(
-                        text = "PRESETS",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            letterSpacing = 1.2.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        EqualizerPreset.entries.forEach { preset ->
-                            val isSelected = state.currentPreset == preset
-                            val presetShape = RoundedCornerShape(14.dp)
                             Box(
                                 modifier = Modifier
-                                    .clip(presetShape)
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                        if (!state.isAdvanced) MaterialTheme.colorScheme.primary
+                                        else Color.Transparent
                                     )
-                                    .clickable { EqualizerSettingsRepository.applyPreset(preset) }
-                                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                                    .clickable { EqualizerSettingsRepository.setAdvancedMode(false) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = preset.label,
+                                    text = "Simple (3-Band)",
                                     style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = if (!state.isAdvanced) FontWeight.Bold else FontWeight.Normal,
                                         fontSize = 12.sp,
                                     ),
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurface,
+                                    color = if (!state.isAdvanced) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (state.isAdvanced) MaterialTheme.colorScheme.primary
+                                        else Color.Transparent
+                                    )
+                                    .clickable { EqualizerSettingsRepository.setAdvancedMode(true) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "10-Band Graphic EQ",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = if (state.isAdvanced) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 12.sp,
+                                    ),
+                                    color = if (state.isAdvanced) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
+
+                        // Presets Horizontal Rail
+                        Text(
+                            text = "PRESETS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 1.2.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            EqualizerPreset.entries.forEach { preset ->
+                                val isSelected = state.currentPreset == preset
+                                val presetShape = RoundedCornerShape(14.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(presetShape)
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                        )
+                                        .clickable { EqualizerSettingsRepository.applyPreset(preset) }
+                                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                                ) {
+                                    Text(
+                                        text = preset.label,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 12.sp,
+                                        ),
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            thickness = 1.dp,
+                        )
+
+                        if (state.isAdvanced) {
+                            // 10-Band Graphic Equalizer View
+                            Advanced10BandView(state = state)
+                        } else {
+                            // Simple 3-Band View (Bass, Mid, Treble)
+                            Simple3BandView(state = state)
+                        }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            thickness = 1.dp,
+                        )
+
+                        // Audio Enhancers: Bass Boost & 3D Surround
+                        AudioEnhancersSection(state = state)
                     }
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                        thickness = 1.dp,
-                    )
-
-                    if (state.isAdvanced) {
-                        // 10-Band Graphic Equalizer View
-                        Advanced10BandView(state = state)
-                    } else {
-                        // Simple 3-Band View (Bass, Mid, Treble)
-                        Simple3BandView(state = state)
-                    }
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                        thickness = 1.dp,
-                    )
-
-                    // Audio Enhancers: Bass Boost & 3D Surround
-                    AudioEnhancersSection(state = state)
                 }
             }
         }
@@ -477,6 +484,62 @@ private fun Advanced10BandView(state: EqualizerState) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun VolumeBoostSection(state: EqualizerState) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "VOLUME BOOST",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+            ),
+            color = MaterialTheme.colorScheme.primary,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(
+                    imageVector = Icons.Rounded.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "Boost up to 200%",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Text(
+                text = "${state.volumeBoostPercent}%",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (state.volumeBoostPercent > 100) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = "100% is normal volume. Higher boost may distort sound.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = state.volumeBoostPercent.toFloat(),
+            onValueChange = { EqualizerSettingsRepository.setVolumeBoost(it.roundToInt()) },
+            valueRange = 100f..200f,
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+            ),
+        )
     }
 }
 

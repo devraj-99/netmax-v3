@@ -2,10 +2,12 @@ package com.nuvio.app.features.equalizer
 
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
 import android.util.Log
 
 actual object PlatformAudioEqualizer {
+    actual val supportsVolumeBoost: Boolean = true
 
     /** Attach to an ExoPlayer instance, generating a real audio session id when the
      *  player has not created one yet (attach at build time used to receive
@@ -34,6 +36,7 @@ actual object PlatformAudioEqualizer {
     private val equalizers = mutableMapOf<Int, Equalizer>()
     private val bassBoosts = mutableMapOf<Int, BassBoost>()
     private val virtualizers = mutableMapOf<Int, Virtualizer>()
+    private val loudnessEnhancers = mutableMapOf<Int, LoudnessEnhancer>()
 
     private var lastState: EqualizerState? = null
 
@@ -47,6 +50,9 @@ actual object PlatformAudioEqualizer {
         }
         virtualizers.forEach { (_, virt) ->
             applyToVirtualizer(virt, state)
+        }
+        loudnessEnhancers.forEach { (_, le) ->
+            applyToLoudnessEnhancer(le, state)
         }
     }
 
@@ -83,6 +89,16 @@ actual object PlatformAudioEqualizer {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to initialize Virtualizer for session $sessionId: ${e.message}")
         }
+
+        try {
+            val le = LoudnessEnhancer(sessionId).apply {
+                enabled = false
+            }
+            loudnessEnhancers[sessionId] = le
+            lastState?.let { applyToLoudnessEnhancer(le, it) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to initialize LoudnessEnhancer for session $sessionId: ${e.message}")
+        }
     }
 
     actual fun detachAudioSession(sessionId: Int) {
@@ -101,6 +117,11 @@ actual object PlatformAudioEqualizer {
             virtualizers.remove(sessionId)?.release()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to release Virtualizer for session $sessionId")
+        }
+        try {
+            loudnessEnhancers.remove(sessionId)?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release LoudnessEnhancer for session $sessionId")
         }
     }
 
@@ -134,6 +155,19 @@ actual object PlatformAudioEqualizer {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Error applying bass boost: ${e.message}")
+        }
+    }
+
+    private fun applyToLoudnessEnhancer(le: LoudnessEnhancer, state: EqualizerState) {
+        try {
+            val percent = VolumeBoost.clamp(state.volumeBoostPercent)
+            // Millibels: 100% -> 0, 200% -> +602 (2x amplitude). Independent of the
+            // equalizer enable switch so the boost slider always has an effect.
+            val gainmB = VolumeBoost.gainMillibels(percent)
+            le.setTargetGain(gainmB)
+            le.enabled = percent > 100
+        } catch (e: Exception) {
+            Log.w(TAG, "Error applying volume boost: ${e.message}")
         }
     }
 

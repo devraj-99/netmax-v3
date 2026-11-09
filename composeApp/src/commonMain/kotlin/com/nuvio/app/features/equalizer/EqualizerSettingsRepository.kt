@@ -92,7 +92,14 @@ object EqualizerSettingsRepository {
         PlatformAudioEqualizer.applyState(_state.value)
     }
 
+    fun setVolumeBoost(percent: Int) {
+        val p = VolumeBoost.clamp(percent)
+        _state.update { it.copy(volumeBoostPercent = p) }
+        PlatformAudioEqualizer.applyState(_state.value)
+    }
+
     fun reset() {
+        setVolumeBoost(100)
         applyPreset(EqualizerPreset.Flat)
     }
 }
