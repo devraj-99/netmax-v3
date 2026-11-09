@@ -41,12 +41,15 @@ jobs:
       - name: Verify task graph contains no packaging
         run: |
           ./gradlew -Pnuvio.android.distribution=full ":composeApp:${{ steps.discover.outputs.task }}" --dry-run --console=plain | tee dryrun.txt
-          if grep -iqE '^:[^ ]*(assemble|package|bundle|apk|aar)' dryrun.txt; then
+          # Resource preparation is required for Kotlin's generated R references;
+          # it creates no APK/AAR. Keep all other packaging forbidden.
+          grep -vE '^:composeApp:packageAndroidMainResources ' dryrun.txt > guarded-dryrun.txt
+          if grep -iqE '^:[^ ]*(assemble|package|bundle|apk|aar)' guarded-dryrun.txt; then
             echo 'GRAPH CONTAINS PACKAGING TASK - ABORTING before any execution'
-            grep -iE '^:[^ ]*(assemble|package|bundle|apk|aar)' dryrun.txt
+            grep -iE '^:[^ ]*(assemble|package|bundle|apk|aar)' guarded-dryrun.txt
             exit 1
           fi
-          echo 'Graph clean: no assemble/package/bundle/apk/aar tasks'
+          echo 'Graph clean: no APK/AAR packaging; compile resource preparation only'
 
       - name: Compile (Kotlin only, no assemble/package)
         run: ./gradlew -Pnuvio.android.distribution=full ":composeApp:${{ steps.discover.outputs.task }}" --no-daemon --console=plain
