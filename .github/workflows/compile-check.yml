@@ -22,6 +22,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Provide optional runtime config file for compile
+        run: touch local.properties
+
       - name: Discover Android Kotlin compile task
         id: discover
         run: |
