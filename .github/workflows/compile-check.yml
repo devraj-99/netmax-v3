@@ -25,20 +25,22 @@ jobs:
       - name: Discover Android Kotlin compile task
         id: discover
         run: |
-          ./gradlew :composeApp:tasks --all --console=plain > tasks.txt
-          grep -oE '^compile[A-Za-z0-9]*KotlinAndroid\b' tasks.txt | sort -u | tee compile-tasks.txt
-          if grep -qx 'compileDebugKotlinAndroid' compile-tasks.txt; then
-            TASK=compileDebugKotlinAndroid
-          else
-            TASK=$(grep -i 'debug' compile-tasks.txt | head -1 || true)
+          ./gradlew -Pnuvio.android.distribution=full :composeApp:tasks --all --console=plain > tasks.txt
+          { grep -oE '^compile[A-Za-z0-9]*Kotlin[A-Za-z0-9]*\b' tasks.txt || true; } | sort -u | tee compile-tasks.txt
+          TASK=''
+          for candidate in compileAndroidMain compileAndroidMainKotlin compileKotlinAndroid compileDebugKotlinAndroid compileAndroidMainKotlinAndroid; do
+           if grep -qx "$candidate" tasks.txt || grep -qE "^${candidate}([[:space:]]|$)" tasks.txt; then TASK=$candidate; break; fi
+          done
+          if [ -z "$TASK" ]; then
+           TASK=$(grep -iE '^compile[A-Za-z0-9]*Kotlin[A-Za-z0-9]*Android[A-Za-z0-9]*$' compile-tasks.txt | grep -viE 'test|ios|metadata' | head -1 || true)
           fi
-          if [ -z "${TASK:-}" ]; then echo 'NO compile*KotlinAndroid task found'; exit 1; fi
+          if [ -z "$TASK" ]; then echo 'No supported Android Kotlin compile task found'; cat tasks.txt; exit 1; fi
           echo "task=$TASK" >> "$GITHUB_OUTPUT"
           echo "Selected task: $TASK"
 
       - name: Verify task graph contains no packaging
         run: |
-          ./gradlew ":composeApp:${{ steps.discover.outputs.task }}" --dry-run --console=plain | tee dryrun.txt
+          ./gradlew -Pnuvio.android.distribution=full ":composeApp:${{ steps.discover.outputs.task }}" --dry-run --console=plain | tee dryrun.txt
           if grep -iqE '^:[^ ]*(assemble|package|bundle|apk|aar)' dryrun.txt; then
             echo 'GRAPH CONTAINS PACKAGING TASK - ABORTING before any execution'
             grep -iE '^:[^ ]*(assemble|package|bundle|apk|aar)' dryrun.txt
@@ -47,4 +49,4 @@ jobs:
           echo 'Graph clean: no assemble/package/bundle/apk/aar tasks'
 
       - name: Compile (Kotlin only, no assemble/package)
-        run: ./gradlew ":composeApp:${{ steps.discover.outputs.task }}" --no-daemon --console=plain
+        run: ./gradlew -Pnuvio.android.distribution=full ":composeApp:${{ steps.discover.outputs.task }}" --no-daemon --console=plain
