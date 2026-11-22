@@ -42,6 +42,7 @@ import com.nuvio.app.features.settings.LiquidGlassSettingsRepository
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 
 /**
@@ -119,6 +120,7 @@ object LiquidGlassDefaults {
     @Composable
     fun borderBrush(isLight: Boolean, settings: LiquidGlassSettings): Brush {
         val chroma = settings.chromaticAberration
+        val reflection = settings.reflectionIntensity.coerceIn(0f, 2f)
         val base = if (settings.enhancedLiquidGlass) {
             if (isLight) {
                 listOf(
@@ -148,14 +150,15 @@ object LiquidGlassDefaults {
                 )
             }
         }
-        if (chroma <= 0.01f) return Brush.verticalGradient(base)
-        val edge = (0.22f * chroma).coerceIn(0f, 0.22f)
+        val reflected = base.map { it.copy(alpha = (it.alpha * reflection).coerceIn(0f, 1f)) }
+        if (chroma <= 0.01f) return Brush.verticalGradient(reflected)
+        val edge = (0.22f * chroma * reflection).coerceIn(0f, 0.22f)
         return Brush.horizontalGradient(
             listOf(
                 Color(0xFF68D8D6).copy(alpha = edge),
-                base[0],
-                base[1],
-                base[2],
+                reflected[0],
+                reflected[1],
+                reflected[2],
                 Color(0xFFFF69B4).copy(alpha = edge),
             ),
         )
@@ -237,6 +240,9 @@ fun Modifier.liquidGlass(
                     this.blurRadius = blurRadius
                     inputScale = HazeInputScale.Fixed(0.5f)
                     noiseFactor = noise
+                    if (settings.blurTint.alpha > 0f) {
+                        tints = listOf(HazeTint(settings.blurTint))
+                    }
                 }
             } else Modifier
         )

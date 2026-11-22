@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +50,12 @@ import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.labelRes
 import com.nuvio.app.core.ui.ThemeColors
 import com.nuvio.app.core.ui.accentBrush
+import com.nuvio.app.core.ui.liquidGlass
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.nuvio.app.features.membership.MemberAccessRepository
 import com.nuvio.app.features.membership.availableAppThemes
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -554,6 +563,17 @@ private fun LiquidGlassControlsBottomSheet(
                 }
             }
             item {
+                Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.settings_appearance_liquid_glass_preview),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LiquidGlassLivePreview(state)
+                }
+            }
+            item {
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_appearance_enhanced_liquid_glass),
                     description = stringResource(Res.string.settings_appearance_enhanced_liquid_glass_description),
@@ -578,6 +598,15 @@ private fun LiquidGlassControlsBottomSheet(
                     value = state.blurRadius,
                     range = 0f..48f,
                     onValueChange = LiquidGlassSettingsRepository::setBlurRadius,
+                )
+            }
+            item {
+                GlassSlider(
+                    title = stringResource(Res.string.settings_appearance_liquid_glass_reflection),
+                    valueLabel = "${state.reflectionIntensity.formatOne()}x",
+                    value = state.reflectionIntensity,
+                    range = 0f..2f,
+                    onValueChange = LiquidGlassSettingsRepository::setReflectionIntensity,
                 )
             }
             item {
@@ -635,6 +664,14 @@ private fun LiquidGlassControlsBottomSheet(
             }
             item {
                 GlassColorPresets(
+                    title = stringResource(Res.string.settings_appearance_liquid_glass_blur_tint),
+                    selected = state.blurTint,
+                    colors = liquidGlassBlurTintPresets,
+                    onSelected = LiquidGlassSettingsRepository::setBlurTint,
+                )
+            }
+            item {
+                GlassColorPresets(
                     title = stringResource(Res.string.settings_appearance_liquid_glass_text_color),
                     selected = state.textColor,
                     colors = liquidGlassTextPresets,
@@ -684,14 +721,25 @@ private fun GlassColorPresets(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(color)
+                        .background(if (color.alpha == 0f) MaterialTheme.colorScheme.surfaceVariant else color)
                         .border(
                             width = if (color.value == selected.value) 2.dp else 1.dp,
                             color = if (color.value == selected.value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                             shape = CircleShape,
                         )
                         .clickable { onSelected(color) },
-                )
+                ) {
+                    if (color.alpha == 0f) {
+                        Canvas(modifier = Modifier.size(34.dp)) {
+                            drawLine(
+                                color = Color(0xFFFF5252),
+                                start = Offset(6f, 6f),
+                                end = Offset(size.width - 6f, size.height - 6f),
+                                strokeWidth = 4f,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -704,6 +752,86 @@ private val liquidGlassTintPresets = listOf(
     Color(0xFF9FF5C4),
     Color(0xFFFFB7D8),
     Color(0xFFFFD39A),
+)
+
+@Composable
+private fun LiquidGlassLivePreview(state: LiquidGlassSettings) {
+    val previewHazeState = rememberHazeState()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .hazeSource(state = previewHazeState)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF3B1D5E),
+                        Color(0xFF7A2E6D),
+                        Color(0xFFD4544E),
+                        Color(0xFFF0A04B),
+                        Color(0xFF2E6DA4),
+                        Color(0xFF35B8A0),
+                    ),
+                ),
+            ),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(14.dp)
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFD54A)),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 26.dp)
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF8AF5FF)),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .liquidGlass(hazeState = previewHazeState)
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = "Liquid Glass",
+                style = MaterialTheme.typography.titleMedium,
+                color = state.textColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp)
+                .align(Alignment.BottomCenter)
+                .hazeEffect(state = previewHazeState) {
+                    blurRadius = (state.blurRadius * 0.625f).coerceIn(0f, 32f).dp
+                    noiseFactor = 0.012f
+                    if (state.blurTint.alpha > 0f) {
+                        tints = listOf(HazeTint(state.blurTint))
+                    }
+                    progressive = HazeProgressive.verticalGradient(
+                        startIntensity = 0f,
+                        endIntensity = 1f,
+                    )
+                },
+        )
+    }
+}
+
+private val liquidGlassBlurTintPresets = listOf(
+    Color.Transparent,
+    Color(0x40FFFFFF),
+    Color(0x40000000),
+    Color(0x404DA3FF),
+    Color(0x40B44DFF),
+    Color(0x40FF4D88),
 )
 
 private val liquidGlassTextPresets = listOf(

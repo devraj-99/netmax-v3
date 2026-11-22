@@ -28,6 +28,8 @@ data class LiquidGlassSettings(
     val surfaceTint: Color = Color.White,
     val surfaceOpacity: Float = 0.14f,
     val textColor: Color = Color.White,
+    val reflectionIntensity: Float = 1f,
+    val blurTint: Color = Color.Transparent,
 )
 
 object LiquidGlassSettingsRepository {
@@ -50,6 +52,8 @@ object LiquidGlassSettingsRepository {
             surfaceTint = decodeColor(ThemeSettingsStorage.loadLiquidGlassSurfaceTint()) ?: Color.White,
             surfaceOpacity = (ThemeSettingsStorage.loadLiquidGlassSurfaceOpacity() ?: 0.14f).coerceIn(0f, 0.5f),
             textColor = decodeColor(ThemeSettingsStorage.loadLiquidGlassTextColor()) ?: Color.White,
+            reflectionIntensity = (ThemeSettingsStorage.loadLiquidGlassReflectionIntensity() ?: 1f).coerceIn(0f, 2f),
+            blurTint = decodeColor(ThemeSettingsStorage.loadLiquidGlassBlurTint()) ?: Color.Transparent,
         )
     }
 
@@ -74,6 +78,8 @@ object LiquidGlassSettingsRepository {
     fun setSurfaceTint(value: Color) = update { it.copy(surfaceTint = value) }
     fun setSurfaceOpacity(value: Float) = update { it.copy(surfaceOpacity = value.coerceIn(0f, 0.5f)) }
     fun setTextColor(value: Color) = update { it.copy(textColor = value) }
+    fun setReflectionIntensity(value: Float) = update { it.copy(reflectionIntensity = value.coerceIn(0f, 2f)) }
+    fun setBlurTint(value: Color) = update { it.copy(blurTint = value) }
 
     fun reset() {
         _uiState.value = LiquidGlassSettings()
@@ -93,6 +99,8 @@ object LiquidGlassSettingsRepository {
         put("liquid_glass_surface_tint", encodeSyncString(encodeColor(state.surfaceTint)))
         put("liquid_glass_surface_opacity", encodeSyncFloat(state.surfaceOpacity))
         put("liquid_glass_text_color", encodeSyncString(encodeColor(state.textColor)))
+        put("liquid_glass_reflection_intensity", encodeSyncFloat(state.reflectionIntensity))
+        put("liquid_glass_blur_tint", encodeSyncString(encodeColor(state.blurTint)))
     }
 
     fun replaceFromSyncPayload(payload: JsonObject) {
@@ -107,6 +115,8 @@ object LiquidGlassSettingsRepository {
         payload.decodeSyncString("liquid_glass_surface_tint")?.let { decodeColor(it)?.let(::setSurfaceTint) }
         payload.decodeSyncFloat("liquid_glass_surface_opacity")?.let(::setSurfaceOpacity)
         payload.decodeSyncString("liquid_glass_text_color")?.let { decodeColor(it)?.let(::setTextColor) }
+        payload.decodeSyncFloat("liquid_glass_reflection_intensity")?.let(::setReflectionIntensity)
+        payload.decodeSyncString("liquid_glass_blur_tint")?.let { decodeColor(it)?.let(::setBlurTint) }
     }
 
     private inline fun update(transform: (LiquidGlassSettings) -> LiquidGlassSettings) {
@@ -128,6 +138,8 @@ object LiquidGlassSettingsRepository {
         ThemeSettingsStorage.saveLiquidGlassSurfaceTint(encodeColor(state.surfaceTint))
         ThemeSettingsStorage.saveLiquidGlassSurfaceOpacity(state.surfaceOpacity)
         ThemeSettingsStorage.saveLiquidGlassTextColor(encodeColor(state.textColor))
+        ThemeSettingsStorage.saveLiquidGlassReflectionIntensity(state.reflectionIntensity)
+        ThemeSettingsStorage.saveLiquidGlassBlurTint(encodeColor(state.blurTint))
     }
 
     private fun encodeColor(color: Color): String = color.value.toString(16)

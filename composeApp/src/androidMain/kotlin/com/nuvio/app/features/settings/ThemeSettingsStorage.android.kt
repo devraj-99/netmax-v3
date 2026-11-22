@@ -32,6 +32,8 @@ actual object ThemeSettingsStorage {
     private const val liquidGlassSurfaceTintKey = "liquid_glass_surface_tint"
     private const val liquidGlassSurfaceOpacityKey = "liquid_glass_surface_opacity"
     private const val liquidGlassTextColorKey = "liquid_glass_text_color"
+    private const val liquidGlassReflectionIntensityKey = "liquid_glass_reflection_intensity"
+    private const val liquidGlassBlurTintKey = "liquid_glass_blur_tint"
     private val profileScopedSyncKeys = listOf(
         selectedThemeKey,
         themeModeKey,
@@ -49,6 +51,8 @@ actual object ThemeSettingsStorage {
         liquidGlassSurfaceTintKey,
         liquidGlassSurfaceOpacityKey,
         liquidGlassTextColorKey,
+        liquidGlassReflectionIntensityKey,
+        liquidGlassBlurTintKey,
     )
 
     private var preferences: SharedPreferences? = null
@@ -167,6 +171,10 @@ actual object ThemeSettingsStorage {
     actual fun saveLiquidGlassSurfaceOpacity(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassSurfaceOpacityKey), value)?.apply() }
     actual fun loadLiquidGlassTextColor(): String? = preferences?.getString(ProfileScopedKey.of(liquidGlassTextColorKey), null)
     actual fun saveLiquidGlassTextColor(value: String) { preferences?.edit()?.putString(ProfileScopedKey.of(liquidGlassTextColorKey), value)?.apply() }
+    actual fun loadLiquidGlassReflectionIntensity(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassReflectionIntensityKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun saveLiquidGlassReflectionIntensity(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassReflectionIntensityKey), value)?.apply() }
+    actual fun loadLiquidGlassBlurTint(): String? = preferences?.getString(ProfileScopedKey.of(liquidGlassBlurTintKey), null)
+    actual fun saveLiquidGlassBlurTint(value: String) { preferences?.edit()?.putString(ProfileScopedKey.of(liquidGlassBlurTintKey), value)?.apply() }
 
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadSelectedTheme()?.let { put(selectedThemeKey, encodeSyncString(it)) }

@@ -38,6 +38,10 @@ internal expect object ThemeSettingsStorage {
     fun saveLiquidGlassSurfaceOpacity(value: Float)
     fun loadLiquidGlassTextColor(): String?
     fun saveLiquidGlassTextColor(value: String)
+    fun loadLiquidGlassReflectionIntensity(): Float?
+    fun saveLiquidGlassReflectionIntensity(value: Float)
+    fun loadLiquidGlassBlurTint(): String?
+    fun saveLiquidGlassBlurTint(value: String)
     fun exportToSyncPayload(): JsonObject
     fun replaceFromSyncPayload(payload: JsonObject)
 }

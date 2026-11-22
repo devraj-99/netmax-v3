@@ -28,6 +28,8 @@ actual object ThemeSettingsStorage {
     private const val liquidGlassSurfaceTintKey = "liquid_glass_surface_tint"
     private const val liquidGlassSurfaceOpacityKey = "liquid_glass_surface_opacity"
     private const val liquidGlassTextColorKey = "liquid_glass_text_color"
+    private const val liquidGlassReflectionIntensityKey = "liquid_glass_reflection_intensity"
+    private const val liquidGlassBlurTintKey = "liquid_glass_blur_tint"
     private val profileScopedSyncKeys = listOf(
         selectedThemeKey,
         themeModeKey,
@@ -45,6 +47,8 @@ actual object ThemeSettingsStorage {
         liquidGlassSurfaceTintKey,
         liquidGlassSurfaceOpacityKey,
         liquidGlassTextColorKey,
+        liquidGlassReflectionIntensityKey,
+        liquidGlassBlurTintKey,
     )
 
     actual fun loadSelectedTheme(): String? =
@@ -150,6 +154,10 @@ actual object ThemeSettingsStorage {
     actual fun saveLiquidGlassSurfaceOpacity(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassSurfaceOpacityKey))
     actual fun loadLiquidGlassTextColor(): String? = NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(liquidGlassTextColorKey))
     actual fun saveLiquidGlassTextColor(value: String) = NSUserDefaults.standardUserDefaults.setObject(value, forKey = ProfileScopedKey.of(liquidGlassTextColorKey))
+    actual fun loadLiquidGlassReflectionIntensity(): Float? = loadFloat(liquidGlassReflectionIntensityKey)
+    actual fun saveLiquidGlassReflectionIntensity(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassReflectionIntensityKey))
+    actual fun loadLiquidGlassBlurTint(): String? = NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(liquidGlassBlurTintKey))
+    actual fun saveLiquidGlassBlurTint(value: String) = NSUserDefaults.standardUserDefaults.setObject(value, forKey = ProfileScopedKey.of(liquidGlassBlurTintKey))
 
     private fun loadBool(key: String): Boolean? {
         val defaults = NSUserDefaults.standardUserDefaults

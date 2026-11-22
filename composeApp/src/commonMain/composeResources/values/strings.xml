@@ -704,6 +704,10 @@
     <string name="settings_appearance_liquid_glass_surface_tint">Surface Tint</string>
     <string name="settings_appearance_liquid_glass_surface_opacity">Surface Opacity</string>
     <string name="settings_appearance_liquid_glass_text_color">Glass Text Colour</string>
+    <string name="settings_appearance_liquid_glass_preview">Live Preview</string>
+    <string name="settings_appearance_liquid_glass_reflection">Reflection</string>
+    <string name="settings_appearance_liquid_glass_blur_tint">Blur Colour</string>
+    <string name="settings_appearance_liquid_glass_blur_tint_none">None</string>
     <string name="settings_appearance_liquid_glass_reset">Reset Liquid Glass</string>
     <string name="settings_appearance_poster_customization_description">Tune card width and corner radius.</string>
     <string name="settings_appearance_section_display">DISPLAY</string>
