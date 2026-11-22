@@ -143,23 +143,26 @@ internal fun PlayerControlsShell(
                 .align(Alignment.TopCenter)
                 .then(
                     if (glassActive) {
+                        // Soft progressive blur of the live video, fading out smoothly -
+                        // Instagram-style edge blur, no black gradient band.
                         Modifier.hazeEffect(state = hazeState) {
-                            blurRadius = 18.dp
-                            noiseFactor = 0.015f
+                            blurRadius = 20.dp
+                            noiseFactor = 0.012f
                             progressive = HazeProgressive.verticalGradient(
                                 startIntensity = 1f,
                                 endIntensity = 0f,
                             )
                         }
-                    } else Modifier,
-                )
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = if (glassActive) 0.32f else 0.7f),
-                            Color.Transparent,
-                        ),
-                    ),
+                    } else {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.7f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        )
+                    },
                 ),
         )
 
@@ -171,22 +174,23 @@ internal fun PlayerControlsShell(
                 .then(
                     if (glassActive) {
                         Modifier.hazeEffect(state = hazeState) {
-                            blurRadius = 18.dp
-                            noiseFactor = 0.015f
+                            blurRadius = 20.dp
+                            noiseFactor = 0.012f
                             progressive = HazeProgressive.verticalGradient(
                                 startIntensity = 0f,
                                 endIntensity = 1f,
                             )
                         }
-                    } else Modifier,
-                )
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = if (glassActive) 0.32f else 0.7f),
-                        ),
-                    ),
+                    } else {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.7f),
+                                ),
+                            ),
+                        )
+                    },
                 ),
         )
 
