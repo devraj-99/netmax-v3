@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,6 +43,13 @@ import com.nuvio.app.features.settings.ThemeSettingsRepository
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+
+/**
+ * App-wide ambient haze state. Provided at the tab-host root so any [Modifier.liquidGlass]
+ * call without an explicit hazeState still blurs the real content behind it instead of
+ * rendering as plain transparency.
+ */
+val LocalAppHazeState = compositionLocalOf<HazeState?> { null }
 
 object LiquidGlassDefaults {
     val BlurRadius: Dp = 32.dp
@@ -94,15 +102,15 @@ object LiquidGlassDefaults {
         return if (isLight) {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.68f * vibrancy),
-                    Color(0xFFF2F2F7).copy(alpha = 0.56f * vibrancy),
+                    Color.White.copy(alpha = 0.42f * vibrancy),
+                    Color(0xFFF2F2F7).copy(alpha = 0.30f * vibrancy),
                 ),
             )
         } else {
             Brush.verticalGradient(
                 listOf(
-                    Color(0xFF303038).copy(alpha = 0.50f * vibrancy),
-                    Color(0xFF111116).copy(alpha = 0.64f * vibrancy),
+                    Color(0xFF303038).copy(alpha = 0.30f * vibrancy),
+                    Color(0xFF111116).copy(alpha = 0.40f * vibrancy),
                 ),
             )
         }
@@ -134,9 +142,9 @@ object LiquidGlassDefaults {
                 )
             } else {
                 listOf(
-                    Color.White.copy(alpha = 0.48f),
-                    Color.White.copy(alpha = 0.16f),
-                    Color.White.copy(alpha = 0.05f),
+                    Color.White.copy(alpha = 0.65f),
+                    Color.White.copy(alpha = 0.20f),
+                    Color.White.copy(alpha = 0.06f),
                 )
             }
         }
@@ -172,10 +180,12 @@ object LiquidGlassDefaults {
         val tint = if (isLight) Color.White else Color(0xFFE9F5FF)
         return Brush.verticalGradient(
             colorStops = arrayOf(
-                0f to tint.copy(alpha = 0.26f * amount),
+                0f to tint.copy(alpha = 0.40f * amount),
+                (height * 0.4f).coerceAtMost(0.4f) to tint.copy(alpha = 0.16f * amount),
                 height to tint.copy(alpha = 0.05f * amount),
-                (height + 0.18f).coerceAtMost(1f) to Color.Transparent,
-                1f to Color.Transparent,
+                (height + 0.18f).coerceAtMost(0.9f) to Color.Transparent,
+                0.9f to Color.Transparent,
+                1f to tint.copy(alpha = 0.07f * amount),
             ),
         )
     }
@@ -193,6 +203,7 @@ fun Modifier.liquidGlass(
     LiquidGlassSettingsRepository.ensureLoaded()
     val settings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
     val effectiveEnabled = isEnabled && settings.enabled
+    val resolvedHazeState = hazeState ?: LocalAppHazeState.current
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
     if (!effectiveEnabled) {
@@ -221,8 +232,8 @@ fun Modifier.liquidGlass(
         .shadow(depth, shape, clip = false)
         .clip(shape)
         .then(
-            if (hazeState != null) {
-                Modifier.hazeEffect(state = hazeState) {
+            if (resolvedHazeState != null) {
+                Modifier.hazeEffect(state = resolvedHazeState) {
                     this.blurRadius = blurRadius
                     inputScale = HazeInputScale.Fixed(0.5f)
                     noiseFactor = noise

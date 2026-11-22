@@ -75,6 +75,8 @@ import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.gradientMask
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.stringResource
@@ -117,14 +119,17 @@ internal fun PlayerControlsShell(
     equalizerVisible: Boolean,
     onEqualizerVisibleChange: (Boolean) -> Unit,
     horizontalSafePadding: androidx.compose.ui.unit.Dp,
+    externalHazeState: dev.chrisbanes.haze.HazeState? = null,
     modifier: Modifier = Modifier,
 ) {
-    val hazeState = rememberHazeState()
+    val fallbackHazeState = rememberHazeState()
+    val hazeState = externalHazeState ?: fallbackHazeState
     LiquidGlassSettingsRepository.ensureLoaded()
     val glassSettings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
     val masterGlassEnabled by ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.collectAsStateWithLifecycle()
-    val glassSourceModifier = if (glassSettings.enabled && masterGlassEnabled) {
-        Modifier.hazeSource(state = hazeState)
+    val glassActive = glassSettings.enabled && masterGlassEnabled
+    val glassSourceModifier = if (externalHazeState == null && glassActive) {
+        Modifier.hazeSource(state = fallbackHazeState)
     } else Modifier
     Box(
         modifier = modifier
@@ -136,10 +141,22 @@ internal fun PlayerControlsShell(
                 .fillMaxWidth()
                 .height(160.dp)
                 .align(Alignment.TopCenter)
+                .then(
+                    if (glassActive) {
+                        Modifier.hazeEffect(state = hazeState) {
+                            blurRadius = 18.dp
+                            noiseFactor = 0.015f
+                            progressive = HazeProgressive.verticalGradient(
+                                startIntensity = 1f,
+                                endIntensity = 0f,
+                            )
+                        }
+                    } else Modifier,
+                )
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.7f),
+                            Color.Black.copy(alpha = if (glassActive) 0.32f else 0.7f),
                             Color.Transparent,
                         ),
                     ),
@@ -151,11 +168,23 @@ internal fun PlayerControlsShell(
                 .fillMaxWidth()
                 .height(220.dp)
                 .align(Alignment.BottomCenter)
+                .then(
+                    if (glassActive) {
+                        Modifier.hazeEffect(state = hazeState) {
+                            blurRadius = 18.dp
+                            noiseFactor = 0.015f
+                            progressive = HazeProgressive.verticalGradient(
+                                startIntensity = 0f,
+                                endIntensity = 1f,
+                            )
+                        }
+                    } else Modifier,
+                )
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.7f),
+                            Color.Black.copy(alpha = if (glassActive) 0.32f else 0.7f),
                         ),
                     ),
                 ),
@@ -364,6 +393,7 @@ private fun PlayerHeader(
                     ) {
                     if (onSubmitIntroClick != null) {
                         PlayerHeaderIconButton(
+                            hazeState = hazeState,
                             icon = Icons.Rounded.Flag,
                             contentDescription = stringResource(Res.string.submit_intro_action),
                             buttonSize = metrics.headerIconSize + 16.dp,
@@ -373,6 +403,7 @@ private fun PlayerHeader(
                     }
                     if (onOpenInExternalPlayer != null) {
                         PlayerHeaderIconButton(
+                            hazeState = hazeState,
                             icon = Icons.Filled.SwapHoriz,
                             contentDescription = stringResource(Res.string.streams_open_external_player),
                             buttonSize = metrics.headerIconSize + 16.dp,
@@ -381,6 +412,7 @@ private fun PlayerHeader(
                         )
                     }
                     PlayerHeaderIconButton(
+                        hazeState = hazeState,
                         icon = if (orientationMode == PlayerOrientationMode.Portrait) {
                             Icons.Rounded.StayCurrentLandscape
                         } else {
@@ -396,6 +428,7 @@ private fun PlayerHeader(
                         onClick = { PlayerOrientationPreference.toggle() },
                     )
                     PlayerHeaderIconButton(
+                        hazeState = hazeState,
                         icon = Icons.Rounded.GraphicEq,
                         contentDescription = stringResource(Res.string.player_action_equalizer),
                         buttonSize = metrics.headerIconSize + 16.dp,
@@ -404,6 +437,7 @@ private fun PlayerHeader(
                         onClick = { onEqualizerVisibleChange(!equalizerVisible) },
                     )
                     PlayerHeaderIconButton(
+                        hazeState = hazeState,
                         icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
                         contentDescription = if (isLocked) {
                             stringResource(Res.string.compose_player_unlock_controls)
@@ -416,6 +450,7 @@ private fun PlayerHeader(
                     )
                     if (onVideoSettingsClick != null) {
                         PlayerHeaderIconButton(
+                            hazeState = hazeState,
                             icon = Icons.Rounded.AutoAwesome,
                             contentDescription = stringResource(Res.string.player_action_video_settings),
                             buttonSize = metrics.headerIconSize + 16.dp,
@@ -454,13 +489,18 @@ private fun PlayerHeaderIconButton(
     buttonSize: androidx.compose.ui.unit.Dp,
     iconSize: androidx.compose.ui.unit.Dp,
     tint: Color = Color.White,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .size(buttonSize)
+            .liquidGlass(
+                shape = CircleShape,
+                hazeState = hazeState,
+                borderWidth = 1.dp,
+            )
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.35f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -634,8 +674,8 @@ private fun ProgressControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize)
-            TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
+            TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize, hazeState = hazeState)
+            TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize, hazeState = hazeState)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -832,12 +872,15 @@ internal fun LockedPlayerOverlay(
 private fun TimePill(
     text: String,
     fontSize: androidx.compose.ui.unit.TextUnit,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.5f))
-            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            .liquidGlass(
+                shape = RoundedCornerShape(12.dp),
+                hazeState = hazeState,
+                borderWidth = 1.dp,
+            )
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(

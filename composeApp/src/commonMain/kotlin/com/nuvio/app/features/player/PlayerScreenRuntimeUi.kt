@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.p2p.formatP2pMegabytes
 import com.nuvio.app.features.p2p.formatP2pSpeed
@@ -106,6 +108,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
         }
     }
     val gestureCallbacks = rememberSurfaceGestureCallbacks()
+    val playerGlassHazeState = rememberHazeState()
 
     Box(
         modifier = Modifier
@@ -153,7 +156,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 externalSubtitles = externalSubtitles,
                 streamType = activeStreamType,
                 useYoutubeChunkedPlayback = isYouTubePlayback,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().hazeSource(state = playerGlassHazeState),
                 playWhenReady = shouldPlay,
                 initialPositionMs = activeInitialPositionMs.takeIf { it > 0L },
                 initialPositionRequestKey = initialPositionRequestKey,
@@ -212,7 +215,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             )
         }
 
-        RenderPlayerControls(displayedPositionMs = displayedPositionMs, isEpisode = isEpisode)
+        RenderPlayerControls(displayedPositionMs = displayedPositionMs, isEpisode = isEpisode, hazeState = playerGlassHazeState)
         RenderPlaybackOverlays(
             runtime = runtime,
             displayedPositionMs = displayedPositionMs,
@@ -246,7 +249,7 @@ private fun PlayerScreenRuntime.currentInitialPositionRequestKey(): String? {
 }
 
 @Composable
-private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, isEpisode: Boolean) {
+private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, isEpisode: Boolean, hazeState: dev.chrisbanes.haze.HazeState) {
     val isInPip = rememberIsInPictureInPicture()
     // Auto-refresh video tracks when HLS is playing and controller is ready
     androidx.compose.runtime.LaunchedEffect(playerController, playbackSnapshot.isLoading, activeSourceUrl, activeStreamType) {
@@ -272,6 +275,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
         exit = fadeOut(),
     ) {
         PlayerControlsShell(
+            externalHazeState = hazeState,
             title = title,
             streamTitle = activeStreamTitle,
             providerName = activeProviderName,

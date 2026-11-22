@@ -78,8 +78,10 @@ import kotlinx.coroutines.launch
 
 open class MainActivity : AppCompatActivity() {
     private var pipRemoteActionReceiver: PipRemoteActionReceiver? = null
+    private var handledVideoViewUri: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        handledVideoViewUri = savedInstanceState?.getString(KEY_HANDLED_VIDEO_VIEW_URI)
         installSplashScreen()
         enableEdgeToEdge(
             navigationBarStyle = SystemBarStyle.dark(
@@ -154,7 +156,7 @@ open class MainActivity : AppCompatActivity() {
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
         LocalVideosPlatform.bindActivity(this)
-        handleIncomingAppIntent(intent)
+        handleIncomingAppIntent(intent, isRecreation = savedInstanceState != null)
 
         setContent {
             App()
@@ -164,7 +166,12 @@ open class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleIncomingAppIntent(intent)
+        handleIncomingAppIntent(intent, isRecreation = false)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_HANDLED_VIDEO_VIEW_URI, handledVideoViewUri)
     }
 
     override fun onUserLeaveHint() {
@@ -205,7 +212,7 @@ open class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
-    private fun handleIncomingAppIntent(intent: Intent?) {
+    private fun handleIncomingAppIntent(intent: Intent?, isRecreation: Boolean = false) {
         if (intent != null && intent.action == Intent.ACTION_VIEW) {
             val data = intent.data
             val type = intent.type?.lowercase()
@@ -216,6 +223,12 @@ open class MainActivity : AppCompatActivity() {
                 (type == null && isLocalVideoUri)
             if (data != null && isVideoIntent && scheme != "nuvio" && scheme != "stremio") {
                 val uriString = data.toString()
+                // On recreation the system redelivers the original VIEW intent; skip the
+                // one already handled so the player does not re-open by itself after the
+                // user went back to the other app. A fresh tap on the same file still
+                // arrives via onNewIntent (isRecreation = false) and opens normally.
+                if (isRecreation && uriString == handledVideoViewUri) return
+                handledVideoViewUri = uriString
                 CoroutineScope(Dispatchers.Main).launch {
                     val displayName = runCatching {
                         LocalVideosPlatform.displayNameForUri(uriString)
@@ -233,5 +246,9 @@ open class MainActivity : AppCompatActivity() {
         val appUrl = intent?.dataString?.trim().orEmpty()
         if (appUrl.isBlank()) return
         handleAppUrl(appUrl)
+    }
+
+    private companion object {
+        const val KEY_HANDLED_VIDEO_VIEW_URI = "netmax.handled_video_view_uri"
     }
 }

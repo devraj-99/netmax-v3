@@ -982,6 +982,37 @@ internal fun MainAppContent(
             return true
         }
 
+        // Resume a continue-watching/history entry that points at an on-device local video
+        // directly from the saved local file - never via provider (stream) search.
+        suspend fun resumeLocalContinueWatching(item: ContinueWatchingItem, startFromBeginning: Boolean): Boolean {
+            val localId = item.videoId.removePrefix("local:")
+            val video = LocalVideosRepository.uiState.value.videos
+                .firstOrNull { it.id == localId } ?: return false
+            val playbackTitle = video.title.ifBlank { item.title }
+            val playerLaunch = PlayerLaunch(
+                profileId = activePlaybackProfileId,
+                title = playbackTitle,
+                sourceUrl = video.contentUri,
+                streamTitle = playbackTitle,
+                streamSubtitle = null,
+                providerName = localVideosProviderLabel,
+                providerAddonId = "local:device",
+                contentType = LocalVideoContentType,
+                videoId = item.videoId,
+                parentMetaId = item.parentMetaId,
+                parentMetaType = LocalVideoContentType,
+                initialPositionMs = if (startFromBeginning) 0L else (item.resumePositionMs ?: 0L),
+                initialProgressFraction = if (startFromBeginning) null else item.resumeProgressFraction,
+            )
+            if (playerSettingsUiState.externalPlayerEnabled) {
+                openExternalPlayback(playerLaunch)
+                return true
+            }
+            val launchId = PlayerLaunchStore.put(playerLaunch)
+            navController.navigate(PlayerRoute(launchId = launchId, title = playerLaunch.title))
+            return true
+        }
+
         suspend fun launchExternalLocalVideo(request: LocalVideoOpenRequest): Boolean {
             val rawTitle = request.displayName
                 ?.trim()
@@ -1287,6 +1318,15 @@ internal fun MainAppContent(
                         CloudLibraryPlaybackTargetLookupResult.NotFound -> {
                             NuvioToastController.show(cloudLibraryPlayFailedText)
                         }
+                    }
+                }
+            } else if (item.parentMetaType == LocalVideoContentType || item.videoId.startsWith("local:")) {
+                coroutineScope.launch {
+                    val launched = runCatching {
+                        resumeLocalContinueWatching(item, startFromBeginning)
+                    }.getOrDefault(false)
+                    if (!launched) {
+                        NuvioToastController.show(localVideoPlayFailedText)
                     }
                 }
             } else {
