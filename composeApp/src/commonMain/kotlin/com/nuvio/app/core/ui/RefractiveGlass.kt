@@ -11,7 +11,6 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.kyant.backdrop.effects.colorControls
 import androidx.compose.foundation.border
-import androidx.compose.ui.graphics.Brush
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.highlight.HighlightStyle
 import com.nuvio.app.features.settings.LiquidGlassSettings
@@ -31,7 +30,7 @@ internal fun Modifier.refractiveGlass(
         // provides the liquid shape. Zero means no blur and no colour wash.
         if (settings.blurRadius > 0f) {
             colorControls(saturation = settings.vibrancy)
-            blur((settings.blurRadius * if (settings.enhancedLiquidGlass) 0.35f else 0.25f).dp.toPx())
+            blur((settings.blurRadius * (if (settings.enhancedLiquidGlass) 0.35f else 0.25f)).dp.toPx())
         }
         val cornerShape = shape as? CornerBasedShape
         if (cornerShape != null) {

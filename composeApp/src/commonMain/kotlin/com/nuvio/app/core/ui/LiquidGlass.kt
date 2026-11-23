@@ -271,6 +271,11 @@ fun Modifier.liquidGlass(
             } else Modifier
         )
         .border(borderWidth, glassBorder, shape)
+        .border(
+            (borderWidth * settings.rimWidth).coerceAtMost(4.dp),
+            Color.White.copy(alpha = (settings.rimIntensity * 0.24f).coerceIn(0f, 0.8f)),
+            shape,
+        )
 }
 
 @Composable
