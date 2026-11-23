@@ -36,6 +36,9 @@ for i in range(24):
         print('LAYOUT OPENED WITHOUT FATAL',flush=True)
         tap(root,'Liquid Glass Controls');time.sleep(5);capture('glass_controls')
         raise SystemExit(0)
+    if tap(root,'Profile name'):
+        adb('shell','input','text','LayoutTest');adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(2)
+        tap(capture('profile_named'),'Create Profile');time.sleep(8);continue
     if tap(root,'Continue Without Account','Continue without an account','Close app','Allow','While using the app','Create Profile','Profile','Settings'):
         time.sleep(8);continue
     if any("Who's watching" in (t or '') for t in texts):
