@@ -1,0 +1,35 @@
+name: Layout crash regression (existing APK only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Download existing v3.5.2 (no build)
+        run: curl -fL https://github.com/devraj-99/netmax-v3/releases/download/v3.5.2-12/NetMax-v3.5.2-release.apk -o app.apk
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install app.apk
+            python3 .github/scripts/layout_regression.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: layout-regression-evidence
+          path: evidence/
+          retention-days: 7
