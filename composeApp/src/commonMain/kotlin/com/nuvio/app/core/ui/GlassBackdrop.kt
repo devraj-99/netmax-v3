@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -13,12 +14,23 @@ import dev.chrisbanes.haze.rememberHazeState
 
 // One capture per existing source, shared by every glass surface referencing it.
 // Dispose entries with their screen instead of retaining graphics layers forever.
+private var captureDepth = 0
+
+internal fun Modifier.excludeGlassFromCapture(): Modifier = drawWithContent {
+    if (captureDepth == 0) drawContent()
+}
+
 private val glassBackdrops = mutableMapOf<HazeState, LayerBackdrop>()
 
 @Composable
 fun rememberGlassHazeState(): HazeState {
     val haze = rememberHazeState()
-    val backdrop = rememberLayerBackdrop()
+    val backdrop = rememberLayerBackdrop(onDraw = {
+        // Do not record a glass surface sampling this same layer into itself.
+        // This also keeps foreground icons out of the refracted source pixels.
+        captureDepth++
+        try { drawContent() } finally { captureDepth-- }
+    })
     remember(haze, backdrop) { glassBackdrops[haze] = backdrop }
     DisposableEffect(haze, backdrop) {
         onDispose { if (glassBackdrops[haze] === backdrop) glassBackdrops.remove(haze) }

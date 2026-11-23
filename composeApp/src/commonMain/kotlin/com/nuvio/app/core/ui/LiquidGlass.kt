@@ -219,7 +219,8 @@ fun Modifier.liquidGlass(
     val backdrop = glassBackdropFor(resolvedHazeState)
     if (backdrop != null && shape is androidx.compose.foundation.shape.CornerBasedShape &&
         com.kyant.backdrop.isRuntimeShaderSupported()) {
-        return this.refractiveGlass(backdrop, shape, settings, borderWidth, alphaFactor)
+        return this.excludeGlassFromCapture()
+            .refractiveGlass(backdrop, shape, settings, borderWidth, alphaFactor)
     }
 
     // Older Android fallback: honest blur/highlights, without claiming refraction.
