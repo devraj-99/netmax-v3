@@ -1403,7 +1403,9 @@ internal fun MainAppContent(
             ) {
             SharedTransitionLayout {
                 CompositionLocalProvider(
-                    com.nuvio.app.core.ui.LocalAppHazeState provides posterOverlayHazeState,
+                    // The root capture belongs only to sibling poster overlays.
+                    // Descendants must not sample their own ancestor capture.
+                    com.nuvio.app.core.ui.LocalAppHazeState provides null,
                     LocalUseNativeNavigation provides useNativeNavigation,
                     LocalNativeNavigationBarHidden provides (currentRoute?.hidesNavigationBar == true),
                 ) {

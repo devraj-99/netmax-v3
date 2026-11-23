@@ -78,6 +78,7 @@ import nuvio.composeapp.generated.resources.*
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import com.nuvio.app.core.ui.glassSource
 import com.nuvio.app.core.ui.rememberGlassHazeState
 import org.jetbrains.compose.resources.stringResource
@@ -130,7 +131,9 @@ internal fun PlayerControlsShell(
     val masterGlassEnabled by ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.collectAsStateWithLifecycle()
     val glassActive = glassSettings.enabled && masterGlassEnabled
     val glassSourceModifier = if (externalHazeState == null && glassActive) {
-        Modifier.glassSource(state = fallbackHazeState)
+        // No video source exists in this fallback controls subtree.
+        // Haze is safe here, but a lens capture of its own controls is not.
+        Modifier.hazeSource(state = fallbackHazeState)
     } else Modifier
     Box(
         modifier = modifier

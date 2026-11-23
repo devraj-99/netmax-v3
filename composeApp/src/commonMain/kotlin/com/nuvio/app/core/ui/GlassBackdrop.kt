@@ -2,122 +2,41 @@ package com.nuvio.app.core.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.GraphicsLayerScope
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntSize
-import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlin.time.TimeSource
 
-// A retained RenderNode must never sample an ancestor's retained RenderNode.
-// Layout's glass back button did exactly that: capture -> button -> capture.
-// A draw-time skip cannot break that graph when Compose reuses a cached layer.
-// Consumers therefore sample a flattened bitmap, NEVER the capture GraphicsLayer.
-// This preserves pixel refraction while making the GPU dependency graph acyclic.
-private val captureClock = TimeSource.Monotonic.markNow()
+// One capture per existing source, shared by every glass surface referencing it.
+// Dispose entries with their screen instead of retaining graphics layers forever.
+// Sources and consumers must be sibling subtrees. A draw-time exclusion
+// cannot remove cached RenderNodes and is not a safety boundary.
 internal fun Modifier.excludeGlassFromCapture(): Modifier = this
 
-internal class SnapshotGlassBackdrop(val scope: CoroutineScope) : Backdrop {
-    var bitmap: ImageBitmap? by mutableStateOf(null)
-    var coordinates: LayoutCoordinates? = null
-    var requested by mutableStateOf(false)
-    var capturing = false
-    var lastCaptureMs = -1000L
-    override val isCoordinatesDependent = true
-
-    override fun DrawScope.drawBackdrop(
-        density: Density,
-        coordinates: LayoutCoordinates?,
-        layerBlock: (GraphicsLayerScope.() -> Unit)?,
-    ) {
-        requested = true
-        val source = this@SnapshotGlassBackdrop.coordinates ?: return
-        val target = coordinates ?: return
-        val image = bitmap ?: return
-        if (!source.isAttached || !target.isAttached) return
-        val offset = runCatching { source.localPositionOf(target) }
-            .getOrElse { target.positionInWindow() - source.positionInWindow() }
-        withTransform({ translate(-offset.x, -offset.y); scale(2f, 2f, androidx.compose.ui.geometry.Offset.Zero) }) { drawImage(image) }
-    }
-}
-
-private val glassBackdrops = mutableMapOf<HazeState, SnapshotGlassBackdrop>()
+private val glassBackdrops = mutableMapOf<HazeState, LayerBackdrop>()
 
 @Composable
 fun rememberGlassHazeState(): HazeState {
     val haze = rememberHazeState()
-    val scope = rememberCoroutineScope()
-    val captureLayer = rememberGraphicsLayer()
-    val backdrop = remember(haze) { SnapshotGlassBackdrop(scope) }
-    remember(haze, backdrop, captureLayer) {
-        glassBackdrops[haze] = backdrop
-        glassCaptureLayers[haze] = captureLayer
-    }
+    val backdrop = rememberLayerBackdrop()
+    remember(haze, backdrop) { glassBackdrops[haze] = backdrop }
     DisposableEffect(haze, backdrop) {
-        onDispose {
-            if (glassBackdrops[haze] === backdrop) {
-                glassBackdrops.remove(haze)
-                glassCaptureLayers.remove(haze)
-            }
-            backdrop.bitmap = null
-            backdrop.coordinates = null
-        }
+        onDispose { if (glassBackdrops[haze] === backdrop) glassBackdrops.remove(haze) }
     }
     return haze
 }
 
-private val glassCaptureLayers = mutableMapOf<HazeState, androidx.compose.ui.graphics.layer.GraphicsLayer>()
-internal fun glassBackdropFor(state: HazeState?): Backdrop? = glassBackdrops[state]
+internal fun glassBackdropFor(state: HazeState?): LayerBackdrop? = glassBackdrops[state]
 
 fun Modifier.glassSource(state: HazeState): Modifier {
-    val backdrop = glassBackdrops[state] ?: return hazeSource(state = state)
-    val layer = glassCaptureLayers[state] ?: return hazeSource(state = state)
-    return this.onGloballyPositioned { backdrop.coordinates = it }.drawWithContent {
-        drawContent()
-        val nowMs = captureClock.elapsedNow().inWholeMilliseconds
-        // Bound readback cost. A new snapshot is needed only when the source draws.
-        if (backdrop.requested && !backdrop.capturing && nowMs - backdrop.lastCaptureMs >= 100L &&
-            size.width >= 1f && size.height >= 1f) {
-            backdrop.capturing = true
-            backdrop.lastCaptureMs = nowMs
-            try {
-                layer.record(IntSize((size.width / 2f).toInt().coerceAtLeast(1), (size.height / 2f).toInt().coerceAtLeast(1))) {
-                    scale(0.5f, 0.5f, androidx.compose.ui.geometry.Offset.Zero) {
-                        this@drawWithContent.drawContent()
-                    }
-                }
-                backdrop.scope.launch {
-                    try {
-                        backdrop.bitmap = layer.toImageBitmap()
-                    } catch (error: Exception) {
-                        GlassDiagnostics.lensStatus = "Source snapshot unavailable: ${error::class.simpleName}"
-                    } finally { backdrop.capturing = false }
-                }
-            } catch (error: Exception) {
-                backdrop.capturing = false
-                GlassDiagnostics.lensStatus = "Source capture unavailable: ${error::class.simpleName}"
-            }
-        }
-    }.hazeSource(state = state)
+    val backdrop = glassBackdrops[state]
+    return (if (backdrop != null) this.layerBackdrop(backdrop) else this)
+        .hazeSource(state = state)
 }
 
 /** Runtime status of the lens shader, shown in the glass settings for troubleshooting. */

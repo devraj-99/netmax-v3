@@ -177,7 +177,9 @@ internal fun MainTabsDestination(
                 CompositionLocalProvider(
                     LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else if (!isTabletLayout && navBarStyleSetting != NavBarStyle.CLASSIC) 72.dp else 0.dp,
                     LocalNuvioNavBarScrollState provides navBarScrollState,
-                    LocalAppHazeState provides navBarHazeState,
+                    // navBarHazeState is captured by AppTabHost. Only its sibling
+                    // nav bar and mini player may sample it, never tab descendants.
+                    LocalAppHazeState provides null,
                 ) {
                     AppTabHost(
                         selectedTab = selectedTab,
