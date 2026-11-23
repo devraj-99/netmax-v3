@@ -39,7 +39,7 @@ internal fun Modifier.excludeGlassFromCapture(): Modifier = this
 internal class SnapshotGlassBackdrop(val scope: CoroutineScope) : Backdrop {
     var bitmap: ImageBitmap? by mutableStateOf(null)
     var coordinates: LayoutCoordinates? = null
-    var requested = false
+    var requested by mutableStateOf(false)
     var capturing = false
     var lastCaptureMs = -1000L
     override val isCoordinatesDependent = true
