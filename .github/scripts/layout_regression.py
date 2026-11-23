@@ -46,7 +46,7 @@ for i in range(24):
         assert adb('shell','pidof','com.nuvio.app',check=False).strip(), 'App died opening glass'
         log=adb('logcat','-d').decode(errors='replace')
         assert 'FATAL EXCEPTION' not in log and 'Fatal signal' not in log, 'Fatal logged'
-        assert any('Liquid Glass' in n.get('text','') for n in root.iter('node')), 'Glass sheet not visible'
+        assert any(n.get('text','') == 'Liquid Glass' for n in root.iter('node')), 'Glass preview pill not visible'
         raise SystemExit(0)
     if tap(root,'Profile name'):
         adb('shell','input','text','LayoutTest');adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(2)

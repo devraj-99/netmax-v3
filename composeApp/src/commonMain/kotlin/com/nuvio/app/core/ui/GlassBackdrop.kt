@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -33,14 +34,12 @@ import kotlin.time.TimeSource
 // Consumers therefore sample a flattened bitmap, NEVER the capture GraphicsLayer.
 // This preserves pixel refraction while making the GPU dependency graph acyclic.
 private val captureClock = TimeSource.Monotonic.markNow()
-private var captureDepth = 0
-internal fun Modifier.excludeGlassFromCapture(): Modifier = drawWithContent {
-    if (captureDepth == 0) drawContent()
-}
+internal fun Modifier.excludeGlassFromCapture(): Modifier = this
 
 internal class SnapshotGlassBackdrop(val scope: CoroutineScope) : Backdrop {
     var bitmap: ImageBitmap? by mutableStateOf(null)
     var coordinates: LayoutCoordinates? = null
+    var requested = false
     var capturing = false
     var lastCaptureMs = -1000L
     override val isCoordinatesDependent = true
@@ -50,13 +49,14 @@ internal class SnapshotGlassBackdrop(val scope: CoroutineScope) : Backdrop {
         coordinates: LayoutCoordinates?,
         layerBlock: (GraphicsLayerScope.() -> Unit)?,
     ) {
+        requested = true
         val source = this@SnapshotGlassBackdrop.coordinates ?: return
         val target = coordinates ?: return
         val image = bitmap ?: return
         if (!source.isAttached || !target.isAttached) return
         val offset = runCatching { source.localPositionOf(target) }
             .getOrElse { target.positionInWindow() - source.positionInWindow() }
-        withTransform({ translate(-offset.x, -offset.y) }) { drawImage(image) }
+        withTransform({ translate(-offset.x, -offset.y); scale(2f, 2f, androidx.compose.ui.geometry.Offset.Zero) }) { drawImage(image) }
     }
 }
 
@@ -95,14 +95,15 @@ fun Modifier.glassSource(state: HazeState): Modifier {
         drawContent()
         val nowMs = captureClock.elapsedNow().inWholeMilliseconds
         // Bound readback cost. A new snapshot is needed only when the source draws.
-        if (!backdrop.capturing && nowMs - backdrop.lastCaptureMs >= 50L &&
+        if (backdrop.requested && !backdrop.capturing && nowMs - backdrop.lastCaptureMs >= 100L &&
             size.width >= 1f && size.height >= 1f) {
             backdrop.capturing = true
             backdrop.lastCaptureMs = nowMs
             try {
-                layer.record(IntSize(size.width.toInt(), size.height.toInt())) {
-                    captureDepth++
-                    try { this@drawWithContent.drawContent() } finally { captureDepth-- }
+                layer.record(IntSize((size.width / 2f).toInt().coerceAtLeast(1), (size.height / 2f).toInt().coerceAtLeast(1))) {
+                    scale(0.5f, 0.5f, androidx.compose.ui.geometry.Offset.Zero) {
+                        this@drawWithContent.drawContent()
+                    }
                 }
                 backdrop.scope.launch {
                     try {

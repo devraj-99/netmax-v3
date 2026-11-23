@@ -467,36 +467,27 @@ private fun LiquidGlassLivePreview(state: LiquidGlassSettings) {
             .fillMaxWidth()
             .height(150.dp)
             .clip(RoundedCornerShape(18.dp))
-            .glassSource(state = previewHazeState)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        Color(0xFF3B1D5E),
-                        Color(0xFF7A2E6D),
-                        Color(0xFFD4544E),
-                        Color(0xFFF0A04B),
-                        Color(0xFF2E6DA4),
-                        Color(0xFF35B8A0),
-                    ),
-                ),
-            ),
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(14.dp)
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFFFD54A)),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 26.dp)
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF8AF5FF)),
-        )
+        // Keep the source and glass pill as siblings, so the preview never
+        // includes the pill itself in the image being refracted.
+        Box(Modifier.matchParentSize().glassSource(previewHazeState)) {
+            Canvas(Modifier.matchParentSize()) {
+                drawRect(Brush.linearGradient(listOf(
+                    Color(0xFF3B1D5E), Color(0xFFD4544E),
+                    Color(0xFFF0A04B), Color(0xFF2E6DA4), Color(0xFF35B8A0),
+                )))
+                // High-contrast lines make the actual lens displacement visible.
+                val spacing = 22.dp.toPx()
+                var x = 0f
+                while (x < size.width) {
+                    drawLine(Color.White.copy(alpha = 0.55f),
+                        Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+                    x += spacing
+                }
+                drawCircle(Color(0xFFFFD54A), 19.dp.toPx(), Offset(33.dp.toPx(), 33.dp.toPx()))
+                drawCircle(Color(0xFF8AF5FF), 15.dp.toPx(), Offset(size.width - 41.dp.toPx(), size.height / 2f))
+            }
+        }
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
