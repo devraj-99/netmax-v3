@@ -146,7 +146,7 @@ internal fun PlayerControlsShell(
                     if (glassActive) {
                         // Soft progressive blur of the live video, fading out smoothly -
                         // Instagram-style edge blur, no black gradient band.
-                        Modifier.hazeEffect(state = hazeState) {
+                        Modifier.playerEdgeBlurFade(top = true).hazeEffect(state = hazeState) {
                             // Player edge blur tracks the user's blur-radius setting
                             // (scaled lighter than glass surfaces), plus the blur tint.
                             blurRadius = (glassSettings.blurRadius * 0.625f).coerceIn(0f, 32f).dp
@@ -155,6 +155,7 @@ internal fun PlayerControlsShell(
                                 tints = listOf(HazeTint(glassSettings.blurTint))
                             }
                             progressive = HazeProgressive.verticalGradient(
+                                easing = PlayerEdgeBlurEasing,
                                 startIntensity = 1f,
                                 endIntensity = 0f,
                             )
@@ -179,13 +180,14 @@ internal fun PlayerControlsShell(
                 .align(Alignment.BottomCenter)
                 .then(
                     if (glassActive) {
-                        Modifier.hazeEffect(state = hazeState) {
+                        Modifier.playerEdgeBlurFade(top = false).hazeEffect(state = hazeState) {
                             blurRadius = (glassSettings.blurRadius * 0.625f).coerceIn(0f, 32f).dp
                             noiseFactor = 0.012f
                             if (glassSettings.blurTint.alpha > 0f) {
                                 tints = listOf(HazeTint(glassSettings.blurTint))
                             }
                             progressive = HazeProgressive.verticalGradient(
+                                easing = PlayerEdgeBlurEasing,
                                 startIntensity = 0f,
                                 endIntensity = 1f,
                             )
