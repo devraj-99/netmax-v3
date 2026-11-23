@@ -34,16 +34,6 @@ jobs:
           python3 -m pip install Pillow==11.3.0
           python3 scripts/generate-netmax-icons.py
 
-      - name: Save Generated Launcher Resources
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add composeApp/src/androidMain/res/mipmap-* composeApp/src/commonMain/composeResources/drawable/app_icon_original.png
-          if ! git diff --cached --quiet; then
-            git commit -m "Generate NETMAX launcher icon resources at all densities"
-            git push origin HEAD:main
-          fi
-
       - name: Prepare Persistent Release Signing
         env:
           KEYSTORE_BASE64: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 }}
@@ -103,7 +93,31 @@ jobs:
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NetMax-Test-APK-v3.4.4-129
+          name: Layout-fix-test-APK
           path: release-output/NetMax-v*-release.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify Layout and glass on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install release-output/NetMax-v3.5.2-release.apk
+            python3 .github/scripts/layout_regression.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: layout-fix-runtime-evidence
+          path: evidence/
+          retention-days: 7

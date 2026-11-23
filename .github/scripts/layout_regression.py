@@ -31,10 +31,22 @@ for i in range(24):
     if tap(root,'Layout','Appearance'):
         time.sleep(5); root=capture('appearance_open')
         log=adb('logcat','-d').decode(errors='replace')
-        if 'FATAL EXCEPTION' in log:
+        if 'FATAL EXCEPTION' in log or 'Fatal signal' in log or not adb('shell','pidof','com.nuvio.app',check=False).strip():
             print('REPRODUCED CRASH',flush=True);raise SystemExit(1)
+        texts=[n.get('text','') for n in root.iter('node')]
+        assert any('Theme' in t or 'THEME' in t or 'Display' in t for t in texts), 'Layout content not rendered'
         print('LAYOUT OPENED WITHOUT FATAL',flush=True)
-        tap(root,'Liquid Glass Controls');time.sleep(5);capture('glass_controls')
+        for scroll in range(5):
+            if tap(root,'Liquid Glass Controls'): break
+            adb('shell','input','swipe','500','1600','500','650','500');time.sleep(2)
+            root=capture('appearance_scroll_%d'%scroll)
+        else: raise SystemExit('Glass Controls row not reached')
+        time.sleep(5); root=capture('glass_controls')
+        print('GLASS TEXTS', [n.get('text','') for n in root.iter('node')], flush=True)
+        assert adb('shell','pidof','com.nuvio.app',check=False).strip(), 'App died opening glass'
+        log=adb('logcat','-d').decode(errors='replace')
+        assert 'FATAL EXCEPTION' not in log and 'Fatal signal' not in log, 'Fatal logged'
+        assert any('Liquid Glass' in n.get('text','') for n in root.iter('node')), 'Glass sheet not visible'
         raise SystemExit(0)
     if tap(root,'Profile name'):
         adb('shell','input','text','LayoutTest');adb('shell','input','keyevent','KEYCODE_BACK');time.sleep(2)
