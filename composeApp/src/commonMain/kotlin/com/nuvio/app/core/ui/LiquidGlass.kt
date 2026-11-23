@@ -202,6 +202,7 @@ fun Modifier.liquidGlass(
     borderWidth: Dp = 1.dp,
     alphaFactor: Float = 1f,
     dynamicTint: Color? = null,
+    reflectivePlayerMaterial: Boolean = false,
 ): Modifier {
     LiquidGlassSettingsRepository.ensureLoaded()
     val settings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
@@ -216,9 +217,14 @@ fun Modifier.liquidGlass(
             .border(borderWidth, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), shape)
     }
 
-    val glassBg = LiquidGlassDefaults.glassBrush(isLight, settings, dynamicTint)
-    val glassBorder = LiquidGlassDefaults.borderBrush(isLight, settings)
-    val tintAlpha = (settings.surfaceOpacity * alphaFactor).coerceIn(0f, 1f)
+    val glassBg = if (reflectivePlayerMaterial) PlayerGlassMaterial.body(isLight)
+        else LiquidGlassDefaults.glassBrush(isLight, settings, dynamicTint)
+    val glassBorder = if (reflectivePlayerMaterial) PlayerGlassMaterial.rim(settings)
+        else LiquidGlassDefaults.borderBrush(isLight, settings)
+    // Keep the player's body smoked rather than washing it out with a white veil.
+    // The opacity slider still applies; the material itself supplies the base density.
+    val tintAlpha = (settings.surfaceOpacity * alphaFactor *
+        (if (reflectivePlayerMaterial) 0.35f else 1f)).coerceIn(0f, 1f)
     val depth = (settings.depthEffect * (if (settings.enhancedLiquidGlass) 18f else 14f)).dp
     val blurRadius = if (settings.enhancedLiquidGlass) {
         (settings.blurRadius * 1.35f).coerceAtLeast(32f).dp
@@ -253,7 +259,15 @@ fun Modifier.liquidGlass(
                 Modifier.background(dynamicTint.copy(alpha = (0.12f * alphaFactor).coerceIn(0f, 0.35f)), shape)
             } else Modifier
         )
-        .background(LiquidGlassDefaults.refractionBrush(settings, isLight), shape)
+        .background(
+            if (reflectivePlayerMaterial) PlayerGlassMaterial.reflection(settings)
+            else LiquidGlassDefaults.refractionBrush(settings, isLight),
+            shape,
+        )
+        .then(
+            if (reflectivePlayerMaterial) Modifier.background(PlayerGlassMaterial.sheen(settings), shape)
+            else Modifier
+        )
         .border(borderWidth, glassBorder, shape)
 }
 
