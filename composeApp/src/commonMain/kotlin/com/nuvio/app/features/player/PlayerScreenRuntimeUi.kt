@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.p2p.formatP2pMegabytes
 import com.nuvio.app.features.p2p.formatP2pSpeed
@@ -108,7 +108,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
         }
     }
     val gestureCallbacks = rememberSurfaceGestureCallbacks()
-    val playerGlassHazeState = rememberHazeState()
+    val playerGlassHazeState = rememberGlassHazeState()
 
     Box(
         modifier = Modifier
@@ -156,7 +156,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 externalSubtitles = externalSubtitles,
                 streamType = activeStreamType,
                 useYoutubeChunkedPlayback = isYouTubePlayback,
-                modifier = Modifier.fillMaxSize().hazeSource(state = playerGlassHazeState),
+                modifier = Modifier.fillMaxSize().glassSource(state = playerGlassHazeState),
                 playWhenReady = shouldPlay,
                 initialPositionMs = activeInitialPositionMs.takeIf { it > 0L },
                 initialPositionRequestKey = initialPositionRequestKey,

@@ -40,8 +40,8 @@ import com.nuvio.app.features.quickwatch.QuickWatchSettings
 import com.nuvio.app.features.quickwatch.QuickWatchSettingsRepository
 import com.nuvio.app.features.settings.NavBarStyle
 import com.nuvio.app.features.settings.ThemeSettingsRepository
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_nav_home
 import nuvio.composeapp.generated.resources.compose_nav_music
@@ -85,7 +85,7 @@ internal fun MainTabsDestination(
         }
         val tabsRouteActive = rootRouteActive
         val navBarScrollState = rememberNuvioNavBarScrollState()
-        val navBarHazeState = rememberHazeState()
+        val navBarHazeState = rememberGlassHazeState()
         val navBarStyleSetting by remember { ThemeSettingsRepository.navBarStyle }.collectAsStateWithLifecycle()
         QuickWatchSettingsRepository.ensureLoaded()
         val quickWatchSettings by QuickWatchSettingsRepository.settings.collectAsStateWithLifecycle()
@@ -186,7 +186,7 @@ internal fun MainTabsDestination(
                         actions = actions(isTabletLayout),
                         modifier = Modifier
                             .fillMaxSize()
-                            .hazeSource(state = navBarHazeState)
+                            .glassSource(state = navBarHazeState)
                             .then(if (navBarStyleSetting == NavBarStyle.ADAPTIVE) Modifier.nestedScroll(navBarScrollState.nestedScrollConnection) else Modifier)
                             .padding(innerPadding),
                     )

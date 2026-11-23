@@ -78,8 +78,8 @@ import nuvio.composeapp.generated.resources.*
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -123,14 +123,14 @@ internal fun PlayerControlsShell(
     externalHazeState: dev.chrisbanes.haze.HazeState? = null,
     modifier: Modifier = Modifier,
 ) {
-    val fallbackHazeState = rememberHazeState()
+    val fallbackHazeState = rememberGlassHazeState()
     val hazeState = externalHazeState ?: fallbackHazeState
     LiquidGlassSettingsRepository.ensureLoaded()
     val glassSettings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
     val masterGlassEnabled by ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.collectAsStateWithLifecycle()
     val glassActive = glassSettings.enabled && masterGlassEnabled
     val glassSourceModifier = if (externalHazeState == null && glassActive) {
-        Modifier.hazeSource(state = fallbackHazeState)
+        Modifier.glassSource(state = fallbackHazeState)
     } else Modifier
     Box(
         modifier = modifier
@@ -396,7 +396,6 @@ private fun PlayerHeader(
                 Box(
                     modifier = Modifier
                         .liquidGlass(
-                            reflectivePlayerMaterial = true,
                             shape = LiquidGlassDefaults.PillShape,
                             hazeState = hazeState,
                             borderWidth = 1.dp,
@@ -512,7 +511,6 @@ private fun PlayerHeaderIconButton(
         modifier = Modifier
             .size(buttonSize)
             .liquidGlass(
-                reflectivePlayerMaterial = true,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -582,7 +580,6 @@ private fun SideControlButton(
     Box(
         modifier = Modifier
             .liquidGlass(
-                reflectivePlayerMaterial = true,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -618,7 +615,6 @@ private fun PlayPauseControlButton(
     Box(
         modifier = Modifier
             .liquidGlass(
-                reflectivePlayerMaterial = true,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -703,7 +699,6 @@ private fun ProgressControls(
             Box(
                 modifier = Modifier
                     .liquidGlass(
-                        reflectivePlayerMaterial = true,
                         shape = RoundedCornerShape(24.dp),
                         hazeState = hazeState,
                         borderWidth = 1.dp,
@@ -897,7 +892,6 @@ private fun TimePill(
     Box(
         modifier = Modifier
             .liquidGlass(
-                reflectivePlayerMaterial = true,
                 shape = RoundedCornerShape(12.dp),
                 hazeState = hazeState,
                 borderWidth = 1.dp,

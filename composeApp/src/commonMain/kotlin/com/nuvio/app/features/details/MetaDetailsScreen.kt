@@ -89,8 +89,8 @@ import com.nuvio.app.core.ui.PosterZoomOverlayAction
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.core.ui.rememberHeroStretchState
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import com.nuvio.app.features.details.components.DetailActionButtons
 import com.nuvio.app.features.details.components.DetailSecondaryAction
 import com.nuvio.app.features.details.components.CommentDetailSheet
@@ -219,7 +219,7 @@ fun MetaDetailsScreen(
     var observedOfflineState by remember(type, id) { mutableStateOf(false) }
     var selectedEpisodeForActions by remember(type, id) { mutableStateOf<MetaVideo?>(null) }
     var selectedEpisodeZoomAnchor by remember(type, id) { mutableStateOf<PosterZoomAnchor?>(null) }
-    val episodeOverlayHazeState = rememberHazeState()
+    val episodeOverlayHazeState = rememberGlassHazeState()
     var selectedSeasonForActions by remember(type, id) { mutableStateOf<Int?>(null) }
     val commentsEnabled by remember {
         TraktCommentsSettings.ensureLoaded()
@@ -423,7 +423,7 @@ fun MetaDetailsScreen(
                 .fillMaxSize()
                 .then(
                     if (selectedEpisodeZoomAnchor != null) {
-                        Modifier.hazeSource(state = episodeOverlayHazeState)
+                        Modifier.glassSource(state = episodeOverlayHazeState)
                     } else {
                         Modifier
                     },

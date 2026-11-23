@@ -44,8 +44,8 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.isIos
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -70,7 +70,7 @@ internal fun TabletStreamsLayout(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hazeState = rememberHazeState()
+    val hazeState = rememberGlassHazeState()
     val tabletBackdrop = remember(background, poster) {
         background ?: poster
     }
@@ -98,7 +98,7 @@ internal fun TabletStreamsLayout(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .hazeSource(state = hazeState),
+                .glassSource(state = hazeState),
         ) {
             if (tabletBackdrop != null) {
                 AsyncImage(

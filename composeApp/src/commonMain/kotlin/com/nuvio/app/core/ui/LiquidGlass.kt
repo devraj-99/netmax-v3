@@ -202,7 +202,6 @@ fun Modifier.liquidGlass(
     borderWidth: Dp = 1.dp,
     alphaFactor: Float = 1f,
     dynamicTint: Color? = null,
-    reflectivePlayerMaterial: Boolean = false,
 ): Modifier {
     LiquidGlassSettingsRepository.ensureLoaded()
     val settings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
@@ -217,14 +216,16 @@ fun Modifier.liquidGlass(
             .border(borderWidth, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f), shape)
     }
 
-    val glassBg = if (reflectivePlayerMaterial) PlayerGlassMaterial.body(isLight)
-        else LiquidGlassDefaults.glassBrush(isLight, settings, dynamicTint)
-    val glassBorder = if (reflectivePlayerMaterial) PlayerGlassMaterial.rim(settings)
-        else LiquidGlassDefaults.borderBrush(isLight, settings)
-    // Keep the player's body smoked rather than washing it out with a white veil.
-    // The opacity slider still applies; the material itself supplies the base density.
-    val tintAlpha = (settings.surfaceOpacity * alphaFactor *
-        (if (reflectivePlayerMaterial) 0.35f else 1f)).coerceIn(0f, 1f)
+    val backdrop = glassBackdropFor(resolvedHazeState)
+    if (backdrop != null && com.kyant.backdrop.isRuntimeShaderSupported()) {
+        return this.refractiveGlass(backdrop, shape, settings, borderWidth, alphaFactor)
+    }
+
+    // Older Android fallback: honest blur/highlights, without claiming refraction.
+    // Zero blur remains clear here too, rather than leaving a milky tint behind.
+    val frosting = (settings.blurRadius / 32f).coerceIn(0f, 1f)
+    val glassBorder = LiquidGlassDefaults.borderBrush(isLight, settings)
+    val tintAlpha = (settings.surfaceOpacity * alphaFactor * frosting * 0.35f).coerceIn(0f, 1f)
     val depth = (settings.depthEffect * (if (settings.enhancedLiquidGlass) 18f else 14f)).dp
     val blurRadius = if (settings.enhancedLiquidGlass) {
         (settings.blurRadius * 1.35f).coerceAtLeast(32f).dp
@@ -241,7 +242,7 @@ fun Modifier.liquidGlass(
         .shadow(depth, shape, clip = false)
         .clip(shape)
         .then(
-            if (resolvedHazeState != null) {
+            if (resolvedHazeState != null && settings.blurRadius > 0f) {
                 Modifier.hazeEffect(state = resolvedHazeState) {
                     this.blurRadius = blurRadius
                     inputScale = HazeInputScale.Fixed(0.5f)
@@ -252,21 +253,11 @@ fun Modifier.liquidGlass(
                 }
             } else Modifier
         )
-        .background(glassBg, shape)
         .background(settings.surfaceTint.copy(alpha = tintAlpha), shape)
         .then(
-            if (dynamicTint != null) {
-                Modifier.background(dynamicTint.copy(alpha = (0.12f * alphaFactor).coerceIn(0f, 0.35f)), shape)
+            if (dynamicTint != null && frosting > 0f) {
+                Modifier.background(dynamicTint.copy(alpha = (0.12f * alphaFactor * frosting).coerceIn(0f, 0.35f)), shape)
             } else Modifier
-        )
-        .background(
-            if (reflectivePlayerMaterial) PlayerGlassMaterial.reflection(settings)
-            else LiquidGlassDefaults.refractionBrush(settings, isLight),
-            shape,
-        )
-        .then(
-            if (reflectivePlayerMaterial) Modifier.background(PlayerGlassMaterial.sheen(settings), shape)
-            else Modifier
         )
         .border(borderWidth, glassBorder, shape)
 }

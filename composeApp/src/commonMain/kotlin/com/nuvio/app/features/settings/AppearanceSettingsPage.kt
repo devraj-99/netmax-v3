@@ -54,8 +54,8 @@ import com.nuvio.app.core.ui.liquidGlass
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.nuvio.app.core.ui.glassSource
+import com.nuvio.app.core.ui.rememberGlassHazeState
 import com.nuvio.app.features.membership.MemberAccessRepository
 import com.nuvio.app.features.membership.availableAppThemes
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -756,13 +756,13 @@ private val liquidGlassTintPresets = listOf(
 
 @Composable
 private fun LiquidGlassLivePreview(state: LiquidGlassSettings) {
-    val previewHazeState = rememberHazeState()
+    val previewHazeState = rememberGlassHazeState()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(150.dp)
             .clip(RoundedCornerShape(18.dp))
-            .hazeSource(state = previewHazeState)
+            .glassSource(state = previewHazeState)
             .background(
                 Brush.linearGradient(
                     listOf(
