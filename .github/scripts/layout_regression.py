@@ -1,9 +1,10 @@
 import os, re, subprocess, time, xml.etree.ElementTree as ET
 os.makedirs('evidence', exist_ok=True)
 def adb(*args, check=True):
-    return subprocess.run(['adb',*args],capture_output=True,check=check).stdout
+    return subprocess.run(['adb',*args],capture_output=True,check=check,timeout=45).stdout
 
 def capture(name):
+    open('evidence/logcat.txt','wb').write(adb('logcat','-d',check=False))
     adb('shell','uiautomator','dump','/sdcard/ui.xml',check=False)
     raw=adb('exec-out','cat','/sdcard/ui.xml',check=False)
     open('evidence/'+name+'.xml','wb').write(raw)
