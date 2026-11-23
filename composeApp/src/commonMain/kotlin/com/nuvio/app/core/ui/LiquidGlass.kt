@@ -219,6 +219,7 @@ fun Modifier.liquidGlass(
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
     if (!effectiveEnabled) {
+        GlassDiagnostics.path = "glass off (plain surface)"
         return this
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
@@ -228,10 +229,16 @@ fun Modifier.liquidGlass(
     val backdrop = glassBackdropFor(resolvedHazeState)
     if (backdrop != null && shape is androidx.compose.foundation.shape.CornerBasedShape &&
         com.kyant.backdrop.isRuntimeShaderSupported()) {
+        GlassDiagnostics.path = "backdrop lens"
         return this.excludeGlassFromCapture()
             .refractiveGlass(backdrop, shape, settings, borderWidth, alphaFactor)
     }
 
+    GlassDiagnostics.path = when {
+        backdrop == null -> "FALLBACK blur: no backdrop source for this surface"
+        shape !is androidx.compose.foundation.shape.CornerBasedShape -> "FALLBACK blur: shape not rounded"
+        else -> "FALLBACK blur: Android < 13, no runtime shader"
+    }
     // Older Android fallback: honest blur/highlights, without claiming refraction.
     // Zero blur remains clear here too, rather than leaving a milky tint behind.
     val frosting = (settings.blurRadius / 32f).coerceIn(0f, 1f)

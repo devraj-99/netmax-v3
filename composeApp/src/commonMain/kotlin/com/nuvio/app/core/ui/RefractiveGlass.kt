@@ -41,23 +41,32 @@ internal fun Modifier.refractiveGlass(
                 cornerShape.bottomEnd.toPx(size, this),
                 size.minDimension / 2f,
             )
-            val height = (size.minDimension * 0.24f * settings.refractionHeight)
+            // Echo-like: the bent band covers most of the rounded end caps and the
+            // displacement is large enough to see content bend at the edge.
+            val height = (corner * 1.1f * settings.refractionHeight)
                 .coerceIn(0f, corner.coerceAtLeast(0f))
-            val amount = (size.minDimension * 0.28f * settings.refractionAmount)
+            val amount = (size.minDimension * 0.65f * settings.refractionAmount)
                 .coerceIn(0f, size.minDimension)
-            if (height > 0f && amount > 0f) {
-                padding = (padding - height).coerceAtLeast(0f)
-                val width = size.width
-                val surfaceHeight = size.height
-                val offset = -padding
-                runtimeShaderEffect("NetmaxLens", GlassLensShader, "content") {
-                    setFloatUniform("size", width, surfaceHeight)
-                    setFloatUniform("offset", offset, offset)
-                    setFloatUniform("cornerRadii", floatArrayOf(corner, corner, corner, corner))
-                    setFloatUniform("refractionHeight", height)
-                    setFloatUniform("refractionAmount", -amount)
-                    setFloatUniform("depthEffect", settings.depthEffect)
-                    setFloatUniform("chromaticAberration", settings.chromaticAberration)
+            if (height > 0f && amount > 0f && GlassDiagnostics.lensEnabled) {
+                try {
+                    val width = size.width
+                    val surfaceHeight = size.height
+                    val offset = -(padding - height).coerceAtLeast(0f)
+                    padding = (padding - height).coerceAtLeast(0f)
+                    runtimeShaderEffect("NetmaxLens", GlassLensShader, "content") {
+                        setFloatUniform("size", width, surfaceHeight)
+                        setFloatUniform("offset", offset, offset)
+                        setFloatUniform("cornerRadii", floatArrayOf(corner, corner, corner, corner))
+                        setFloatUniform("refractionHeight", height)
+                        setFloatUniform("refractionAmount", -amount)
+                        setFloatUniform("depthEffect", settings.depthEffect)
+                        setFloatUniform("chromaticAberration", settings.chromaticAberration)
+                    }
+                    GlassDiagnostics.lensStatus = "Lens shader active (refraction ${height.toInt()}px / ${amount.toInt()}px)"
+                } catch (t: Throwable) {
+                    // Never crash the app for a visual effect; fall back to blur-only.
+                    GlassDiagnostics.lensEnabled = false
+                    GlassDiagnostics.lensStatus = "Lens shader FAILED, blur only: ${t::class.simpleName}: ${t.message?.take(80)}"
                 }
             }
         }
@@ -76,7 +85,7 @@ internal fun Modifier.refractiveGlass(
         if (settings.blurRadius > 0f) {
             val frost = (settings.blurRadius / 32f).coerceIn(0f, 1f)
             drawRect(settings.surfaceTint.copy(alpha =
-                (settings.surfaceOpacity * frost * alphaFactor * 0.35f).coerceIn(0f, 0.25f)))
+                (settings.surfaceOpacity * (0.35f + 0.65f * frost) * alphaFactor * 1.4f).coerceIn(0f, 0.45f)))
             if (settings.blurTint.alpha > 0f) {
                 drawRect(settings.blurTint.copy(alpha = settings.blurTint.alpha * frost))
             }

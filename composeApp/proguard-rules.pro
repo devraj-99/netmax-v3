@@ -91,3 +91,14 @@
 -keep class com.fleeksoft.ksoup.** { *; }
 -dontwarn com.fleeksoft.ksoup.**
 
+
+# Settings > Layout (Appearance) crashed on open in 3.5.1 (release/R8 build). Keep the
+# page and the glass sheet classes un-merged and un-inlined, like the other large composables.
+-keep class com.nuvio.app.features.settings.AppearanceSettingsPageKt { *; }
+-keep class com.nuvio.app.features.settings.AppearanceSettingsPageKt$* { *; }
+-keep class com.nuvio.app.features.settings.LiquidGlassSettingsSheetKt { *; }
+-keep class com.nuvio.app.features.settings.LiquidGlassSettingsSheetKt$* { *; }
+
+# Backdrop (liquid glass lens) library: keep runtime-shader/effect classes intact.
+-keep class com.kyant.backdrop.** { *; }
+-dontwarn com.kyant.backdrop.**

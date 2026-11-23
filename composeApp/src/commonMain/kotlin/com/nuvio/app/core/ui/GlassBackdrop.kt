@@ -45,3 +45,10 @@ fun Modifier.glassSource(state: HazeState): Modifier {
     return (if (backdrop != null) this.layerBackdrop(backdrop) else this)
         .hazeSource(state = state)
 }
+
+/** Runtime status of the lens shader, shown in the glass settings for troubleshooting. */
+object GlassDiagnostics {
+    @kotlin.concurrent.Volatile var lensEnabled: Boolean = true
+    @kotlin.concurrent.Volatile var lensStatus: String = "Lens shader not drawn yet"
+    @kotlin.concurrent.Volatile var path: String = "unknown"
+}
