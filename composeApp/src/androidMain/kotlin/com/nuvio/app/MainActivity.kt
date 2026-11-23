@@ -80,6 +80,26 @@ open class MainActivity : AppCompatActivity() {
     private var pipRemoteActionReceiver: PipRemoteActionReceiver? = null
     private var handledVideoViewUri: String? = null
 
+    /** Writes the last crash stack trace to app storage and shows it once on next launch. */
+    private fun installCrashLogger() {
+        runCatching {
+            val dir = getExternalFilesDir(null) ?: filesDir
+            val file = java.io.File(dir, "last_crash.txt")
+            if (file.exists()) {
+                val text = file.readText()
+                file.delete()
+                val firstLines = text.lineSequence().filter { it.isNotBlank() }.take(4).joinToString("\n").take(400)
+                android.widget.Toast.makeText(this, "Last crash:\n$firstLines", android.widget.Toast.LENGTH_LONG).show()
+                java.io.File(dir, "last_crash_previous.txt").writeText(text)
+            }
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                runCatching { file.writeText(android.util.Log.getStackTraceString(throwable)) }
+                previous?.uncaughtException(thread, throwable)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         handledVideoViewUri = savedInstanceState?.getString(KEY_HANDLED_VIDEO_VIEW_URI)
         installSplashScreen()
@@ -88,6 +108,7 @@ open class MainActivity : AppCompatActivity() {
                 scrim = 0xFF020404.toInt(),
             ),
         )
+        installCrashLogger()
         ThemeSettingsStorage.initialize(applicationContext)
         com.nuvio.app.features.quickwatch.QuickWatchSettingsStorage.initialize(applicationContext)
         com.nuvio.app.features.music.MusicSettingsStorage.initialize(applicationContext)

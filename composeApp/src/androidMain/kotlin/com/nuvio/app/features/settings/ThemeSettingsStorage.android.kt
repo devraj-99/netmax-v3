@@ -14,6 +14,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 actual object ThemeSettingsStorage {
+    /** Tolerates a key previously stored with another type or a NaN/garbage value. */
+    private fun safeFloat(key: String): Float? = runCatching {
+        preferences?.getFloat(key, Float.NaN)?.takeUnless { it.isNaN() || it.isInfinite() }
+    }.getOrNull()
+
     private const val preferencesName = "nuvio_theme_settings"
     private const val selectedThemeKey = "selected_theme"
     private const val themeModeKey = "theme_mode"
@@ -165,31 +170,31 @@ actual object ThemeSettingsStorage {
         if (prefs.contains(key)) prefs.getBoolean(key, false) else null
     }
     actual fun saveEnhancedLiquidGlass(enabled: Boolean) { preferences?.edit()?.putBoolean(ProfileScopedKey.of(enhancedLiquidGlassKey), enabled)?.apply() }
-    actual fun loadLiquidGlassVibrancy(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassVibrancyKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassVibrancy(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassVibrancyKey))
     actual fun saveLiquidGlassVibrancy(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassVibrancyKey), value)?.apply() }
-    actual fun loadLiquidGlassBlurRadius(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassBlurRadiusKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassBlurRadius(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassBlurRadiusKey))
     actual fun saveLiquidGlassBlurRadius(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassBlurRadiusKey), value)?.apply() }
-    actual fun loadLiquidGlassRefractionHeight(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassRefractionHeightKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassRefractionHeight(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassRefractionHeightKey))
     actual fun saveLiquidGlassRefractionHeight(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassRefractionHeightKey), value)?.apply() }
-    actual fun loadLiquidGlassRefractionAmount(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassRefractionAmountKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassRefractionAmount(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassRefractionAmountKey))
     actual fun saveLiquidGlassRefractionAmount(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassRefractionAmountKey), value)?.apply() }
-    actual fun loadLiquidGlassChromaticAberration(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassChromaticAberrationKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassChromaticAberration(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassChromaticAberrationKey))
     actual fun saveLiquidGlassChromaticAberration(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassChromaticAberrationKey), value)?.apply() }
-    actual fun loadLiquidGlassDepthEffect(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassDepthEffectKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassDepthEffect(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassDepthEffectKey))
     actual fun saveLiquidGlassDepthEffect(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassDepthEffectKey), value)?.apply() }
     actual fun loadLiquidGlassSurfaceTint(): String? = preferences?.getString(ProfileScopedKey.of(liquidGlassSurfaceTintKey), null)
     actual fun saveLiquidGlassSurfaceTint(value: String) { preferences?.edit()?.putString(ProfileScopedKey.of(liquidGlassSurfaceTintKey), value)?.apply() }
-    actual fun loadLiquidGlassSurfaceOpacity(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassSurfaceOpacityKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassSurfaceOpacity(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassSurfaceOpacityKey))
     actual fun saveLiquidGlassSurfaceOpacity(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassSurfaceOpacityKey), value)?.apply() }
     actual fun loadLiquidGlassTextColor(): String? = preferences?.getString(ProfileScopedKey.of(liquidGlassTextColorKey), null)
     actual fun saveLiquidGlassTextColor(value: String) { preferences?.edit()?.putString(ProfileScopedKey.of(liquidGlassTextColorKey), value)?.apply() }
-    actual fun loadLiquidGlassRimIntensity(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassRimIntensityKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassRimWidth(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassRimWidthKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassReflectionAngle(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassReflectionAngleKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassPlayerEnabled(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassPlayerEnabledKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassMiniPlayerEnabled(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassMiniPlayerEnabledKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassNavigationEnabled(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassNavigationEnabledKey), Float.NaN).takeUnless { it.isNaN() } }
-    actual fun loadLiquidGlassReflectionIntensity(): Float? = preferences?.let { prefs -> prefs.getFloat(ProfileScopedKey.of(liquidGlassReflectionIntensityKey), Float.NaN).takeUnless { it.isNaN() } }
+    actual fun loadLiquidGlassRimIntensity(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassRimIntensityKey))
+    actual fun loadLiquidGlassRimWidth(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassRimWidthKey))
+    actual fun loadLiquidGlassReflectionAngle(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassReflectionAngleKey))
+    actual fun loadLiquidGlassPlayerEnabled(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassPlayerEnabledKey))
+    actual fun loadLiquidGlassMiniPlayerEnabled(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassMiniPlayerEnabledKey))
+    actual fun loadLiquidGlassNavigationEnabled(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassNavigationEnabledKey))
+    actual fun loadLiquidGlassReflectionIntensity(): Float? = safeFloat(ProfileScopedKey.of(liquidGlassReflectionIntensityKey))
     actual fun saveLiquidGlassRimIntensity(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassRimIntensityKey), value)?.apply() }
     actual fun saveLiquidGlassRimWidth(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassRimWidthKey), value)?.apply() }
     actual fun saveLiquidGlassReflectionAngle(value: Float) { preferences?.edit()?.putFloat(ProfileScopedKey.of(liquidGlassReflectionAngleKey), value)?.apply() }
