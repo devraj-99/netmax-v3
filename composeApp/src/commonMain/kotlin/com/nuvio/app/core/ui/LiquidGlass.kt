@@ -194,18 +194,27 @@ object LiquidGlassDefaults {
     }
 }
 
+enum class GlassComponent { General, Player, MiniPlayer, Navigation }
+
 @Composable
 fun Modifier.liquidGlass(
     shape: Shape = LiquidGlassDefaults.PillShape,
     hazeState: HazeState? = null,
     isEnabled: Boolean = true,
     borderWidth: Dp = 1.dp,
+    component: GlassComponent = GlassComponent.General,
     alphaFactor: Float = 1f,
     dynamicTint: Color? = null,
 ): Modifier {
     LiquidGlassSettingsRepository.ensureLoaded()
     val settings by LiquidGlassSettingsRepository.uiState.collectAsStateWithLifecycle()
-    val effectiveEnabled = isEnabled && settings.enabled
+    val componentEnabled = when (component) {
+        GlassComponent.General -> true
+        GlassComponent.Player -> settings.playerEnabled > 0.5f
+        GlassComponent.MiniPlayer -> settings.miniPlayerEnabled > 0.5f
+        GlassComponent.Navigation -> settings.navigationEnabled > 0.5f
+    }
+    val effectiveEnabled = isEnabled && settings.enabled && componentEnabled
     val resolvedHazeState = hazeState ?: LocalAppHazeState.current
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
 

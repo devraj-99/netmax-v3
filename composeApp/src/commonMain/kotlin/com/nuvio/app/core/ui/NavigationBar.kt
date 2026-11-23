@@ -299,6 +299,7 @@ fun NuvioNavigationBar(
             .padding(horizontal = horizontalPadding)
             .fillMaxWidth()
             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Navigation,
                 shape = glassShape,
                 hazeState = hazeState,
                 isEnabled = liquidGlassEnabled,

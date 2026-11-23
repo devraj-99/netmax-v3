@@ -28,6 +28,12 @@ data class LiquidGlassSettings(
     val surfaceTint: Color = Color.White,
     val surfaceOpacity: Float = 0.14f,
     val textColor: Color = Color.White,
+    val rimIntensity: Float = 1f,
+    val rimWidth: Float = 1f,
+    val reflectionAngle: Float = 45f,
+    val playerEnabled: Float = 1f,
+    val miniPlayerEnabled: Float = 1f,
+    val navigationEnabled: Float = 1f,
     val reflectionIntensity: Float = 1f,
     val blurTint: Color = Color.Transparent,
 )
@@ -52,6 +58,12 @@ object LiquidGlassSettingsRepository {
             surfaceTint = decodeColor(ThemeSettingsStorage.loadLiquidGlassSurfaceTint()) ?: Color.White,
             surfaceOpacity = (ThemeSettingsStorage.loadLiquidGlassSurfaceOpacity() ?: 0.14f).coerceIn(0f, 0.5f),
             textColor = decodeColor(ThemeSettingsStorage.loadLiquidGlassTextColor()) ?: Color.White,
+            rimIntensity = (ThemeSettingsStorage.loadLiquidGlassRimIntensity() ?: 1f).coerceIn(0f, 2f),
+            rimWidth = (ThemeSettingsStorage.loadLiquidGlassRimWidth() ?: 1f).coerceIn(0f, 3f),
+            reflectionAngle = (ThemeSettingsStorage.loadLiquidGlassReflectionAngle() ?: 45f).coerceIn(0f, 360f),
+            playerEnabled = (ThemeSettingsStorage.loadLiquidGlassPlayerEnabled() ?: 1f).coerceIn(0f, 1f),
+            miniPlayerEnabled = (ThemeSettingsStorage.loadLiquidGlassMiniPlayerEnabled() ?: 1f).coerceIn(0f, 1f),
+            navigationEnabled = (ThemeSettingsStorage.loadLiquidGlassNavigationEnabled() ?: 1f).coerceIn(0f, 1f),
             reflectionIntensity = (ThemeSettingsStorage.loadLiquidGlassReflectionIntensity() ?: 1f).coerceIn(0f, 2f),
             blurTint = decodeColor(ThemeSettingsStorage.loadLiquidGlassBlurTint()) ?: Color.Transparent,
         )
@@ -78,6 +90,12 @@ object LiquidGlassSettingsRepository {
     fun setSurfaceTint(value: Color) = update { it.copy(surfaceTint = value) }
     fun setSurfaceOpacity(value: Float) = update { it.copy(surfaceOpacity = value.coerceIn(0f, 0.5f)) }
     fun setTextColor(value: Color) = update { it.copy(textColor = value) }
+    fun setRimIntensity(value: Float) = update { it.copy(rimIntensity = value.coerceIn(0f, 2f)) }
+    fun setRimWidth(value: Float) = update { it.copy(rimWidth = value.coerceIn(0f, 3f)) }
+    fun setReflectionAngle(value: Float) = update { it.copy(reflectionAngle = value.coerceIn(0f, 360f)) }
+    fun setPlayerEnabled(value: Float) = update { it.copy(playerEnabled = value.coerceIn(0f, 1f)) }
+    fun setMiniPlayerEnabled(value: Float) = update { it.copy(miniPlayerEnabled = value.coerceIn(0f, 1f)) }
+    fun setNavigationEnabled(value: Float) = update { it.copy(navigationEnabled = value.coerceIn(0f, 1f)) }
     fun setReflectionIntensity(value: Float) = update { it.copy(reflectionIntensity = value.coerceIn(0f, 2f)) }
     fun setBlurTint(value: Color) = update { it.copy(blurTint = value) }
 
@@ -99,6 +117,12 @@ object LiquidGlassSettingsRepository {
         put("liquid_glass_surface_tint", encodeSyncString(encodeColor(state.surfaceTint)))
         put("liquid_glass_surface_opacity", encodeSyncFloat(state.surfaceOpacity))
         put("liquid_glass_text_color", encodeSyncString(encodeColor(state.textColor)))
+        put("liquid_glass_rim_intensity", encodeSyncFloat(state.rimIntensity))
+        put("liquid_glass_rim_width", encodeSyncFloat(state.rimWidth))
+        put("liquid_glass_reflection_angle", encodeSyncFloat(state.reflectionAngle))
+        put("liquid_glass_player_enabled", encodeSyncFloat(state.playerEnabled))
+        put("liquid_glass_mini_player_enabled", encodeSyncFloat(state.miniPlayerEnabled))
+        put("liquid_glass_navigation_enabled", encodeSyncFloat(state.navigationEnabled))
         put("liquid_glass_reflection_intensity", encodeSyncFloat(state.reflectionIntensity))
         put("liquid_glass_blur_tint", encodeSyncString(encodeColor(state.blurTint)))
     }
@@ -115,6 +139,12 @@ object LiquidGlassSettingsRepository {
         payload.decodeSyncString("liquid_glass_surface_tint")?.let { decodeColor(it)?.let(::setSurfaceTint) }
         payload.decodeSyncFloat("liquid_glass_surface_opacity")?.let(::setSurfaceOpacity)
         payload.decodeSyncString("liquid_glass_text_color")?.let { decodeColor(it)?.let(::setTextColor) }
+        payload.decodeSyncFloat("liquid_glass_rim_intensity")?.let(::setRimIntensity)
+        payload.decodeSyncFloat("liquid_glass_rim_width")?.let(::setRimWidth)
+        payload.decodeSyncFloat("liquid_glass_reflection_angle")?.let(::setReflectionAngle)
+        payload.decodeSyncFloat("liquid_glass_player_enabled")?.let(::setPlayerEnabled)
+        payload.decodeSyncFloat("liquid_glass_mini_player_enabled")?.let(::setMiniPlayerEnabled)
+        payload.decodeSyncFloat("liquid_glass_navigation_enabled")?.let(::setNavigationEnabled)
         payload.decodeSyncFloat("liquid_glass_reflection_intensity")?.let(::setReflectionIntensity)
         payload.decodeSyncString("liquid_glass_blur_tint")?.let { decodeColor(it)?.let(::setBlurTint) }
     }
@@ -138,6 +168,12 @@ object LiquidGlassSettingsRepository {
         ThemeSettingsStorage.saveLiquidGlassSurfaceTint(encodeColor(state.surfaceTint))
         ThemeSettingsStorage.saveLiquidGlassSurfaceOpacity(state.surfaceOpacity)
         ThemeSettingsStorage.saveLiquidGlassTextColor(encodeColor(state.textColor))
+        ThemeSettingsStorage.saveLiquidGlassRimIntensity(state.rimIntensity)
+        ThemeSettingsStorage.saveLiquidGlassRimWidth(state.rimWidth)
+        ThemeSettingsStorage.saveLiquidGlassReflectionAngle(state.reflectionAngle)
+        ThemeSettingsStorage.saveLiquidGlassPlayerEnabled(state.playerEnabled)
+        ThemeSettingsStorage.saveLiquidGlassMiniPlayerEnabled(state.miniPlayerEnabled)
+        ThemeSettingsStorage.saveLiquidGlassNavigationEnabled(state.navigationEnabled)
         ThemeSettingsStorage.saveLiquidGlassReflectionIntensity(state.reflectionIntensity)
         ThemeSettingsStorage.saveLiquidGlassBlurTint(encodeColor(state.blurTint))
     }

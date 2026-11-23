@@ -70,6 +70,7 @@ fun MusicMiniPlayer(
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 6.dp)
                 .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.MiniPlayer,
                     shape = shape,
                     hazeState = hazeState,
                     borderWidth = 1.dp,

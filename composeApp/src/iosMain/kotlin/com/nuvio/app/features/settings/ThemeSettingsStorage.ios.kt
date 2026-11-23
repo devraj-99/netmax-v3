@@ -28,6 +28,12 @@ actual object ThemeSettingsStorage {
     private const val liquidGlassSurfaceTintKey = "liquid_glass_surface_tint"
     private const val liquidGlassSurfaceOpacityKey = "liquid_glass_surface_opacity"
     private const val liquidGlassTextColorKey = "liquid_glass_text_color"
+    private const val liquidGlassRimIntensityKey = "liquid_glass_rim_intensity"
+    private const val liquidGlassRimWidthKey = "liquid_glass_rim_width"
+    private const val liquidGlassReflectionAngleKey = "liquid_glass_reflection_angle"
+    private const val liquidGlassPlayerEnabledKey = "liquid_glass_player_enabled"
+    private const val liquidGlassMiniPlayerEnabledKey = "liquid_glass_mini_player_enabled"
+    private const val liquidGlassNavigationEnabledKey = "liquid_glass_navigation_enabled"
     private const val liquidGlassReflectionIntensityKey = "liquid_glass_reflection_intensity"
     private const val liquidGlassBlurTintKey = "liquid_glass_blur_tint"
     private val profileScopedSyncKeys = listOf(
@@ -47,6 +53,12 @@ actual object ThemeSettingsStorage {
         liquidGlassSurfaceTintKey,
         liquidGlassSurfaceOpacityKey,
         liquidGlassTextColorKey,
+        liquidGlassRimIntensityKey,
+        liquidGlassRimWidthKey,
+        liquidGlassReflectionAngleKey,
+        liquidGlassPlayerEnabledKey,
+        liquidGlassMiniPlayerEnabledKey,
+        liquidGlassNavigationEnabledKey,
         liquidGlassReflectionIntensityKey,
         liquidGlassBlurTintKey,
     )
@@ -154,7 +166,19 @@ actual object ThemeSettingsStorage {
     actual fun saveLiquidGlassSurfaceOpacity(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassSurfaceOpacityKey))
     actual fun loadLiquidGlassTextColor(): String? = NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(liquidGlassTextColorKey))
     actual fun saveLiquidGlassTextColor(value: String) = NSUserDefaults.standardUserDefaults.setObject(value, forKey = ProfileScopedKey.of(liquidGlassTextColorKey))
+    actual fun loadLiquidGlassRimIntensity(): Float? = loadFloat(liquidGlassRimIntensityKey)
+    actual fun loadLiquidGlassRimWidth(): Float? = loadFloat(liquidGlassRimWidthKey)
+    actual fun loadLiquidGlassReflectionAngle(): Float? = loadFloat(liquidGlassReflectionAngleKey)
+    actual fun loadLiquidGlassPlayerEnabled(): Float? = loadFloat(liquidGlassPlayerEnabledKey)
+    actual fun loadLiquidGlassMiniPlayerEnabled(): Float? = loadFloat(liquidGlassMiniPlayerEnabledKey)
+    actual fun loadLiquidGlassNavigationEnabled(): Float? = loadFloat(liquidGlassNavigationEnabledKey)
     actual fun loadLiquidGlassReflectionIntensity(): Float? = loadFloat(liquidGlassReflectionIntensityKey)
+    actual fun saveLiquidGlassRimIntensity(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassRimIntensityKey))
+    actual fun saveLiquidGlassRimWidth(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassRimWidthKey))
+    actual fun saveLiquidGlassReflectionAngle(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassReflectionAngleKey))
+    actual fun saveLiquidGlassPlayerEnabled(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassPlayerEnabledKey))
+    actual fun saveLiquidGlassMiniPlayerEnabled(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassMiniPlayerEnabledKey))
+    actual fun saveLiquidGlassNavigationEnabled(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassNavigationEnabledKey))
     actual fun saveLiquidGlassReflectionIntensity(value: Float) = NSUserDefaults.standardUserDefaults.setDouble(value.toDouble(), forKey = ProfileScopedKey.of(liquidGlassReflectionIntensityKey))
     actual fun loadLiquidGlassBlurTint(): String? = NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(liquidGlassBlurTintKey))
     actual fun saveLiquidGlassBlurTint(value: String) = NSUserDefaults.standardUserDefaults.setObject(value, forKey = ProfileScopedKey.of(liquidGlassBlurTintKey))

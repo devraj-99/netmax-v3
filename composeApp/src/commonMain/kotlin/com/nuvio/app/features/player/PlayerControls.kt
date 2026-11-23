@@ -396,6 +396,7 @@ private fun PlayerHeader(
                 Box(
                     modifier = Modifier
                         .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                             shape = LiquidGlassDefaults.PillShape,
                             hazeState = hazeState,
                             borderWidth = 1.dp,
@@ -511,6 +512,7 @@ private fun PlayerHeaderIconButton(
         modifier = Modifier
             .size(buttonSize)
             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -580,6 +582,7 @@ private fun SideControlButton(
     Box(
         modifier = Modifier
             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -615,6 +618,7 @@ private fun PlayPauseControlButton(
     Box(
         modifier = Modifier
             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                 shape = CircleShape,
                 hazeState = hazeState,
                 borderWidth = 1.dp,
@@ -699,6 +703,7 @@ private fun ProgressControls(
             Box(
                 modifier = Modifier
                     .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                         shape = RoundedCornerShape(24.dp),
                         hazeState = hazeState,
                         borderWidth = 1.dp,
@@ -892,6 +897,7 @@ private fun TimePill(
     Box(
         modifier = Modifier
             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                 shape = RoundedCornerShape(12.dp),
                 hazeState = hazeState,
                 borderWidth = 1.dp,

@@ -38,7 +38,19 @@ internal expect object ThemeSettingsStorage {
     fun saveLiquidGlassSurfaceOpacity(value: Float)
     fun loadLiquidGlassTextColor(): String?
     fun saveLiquidGlassTextColor(value: String)
+    fun loadLiquidGlassRimIntensity(): Float?
+    fun loadLiquidGlassRimWidth(): Float?
+    fun loadLiquidGlassReflectionAngle(): Float?
+    fun loadLiquidGlassPlayerEnabled(): Float?
+    fun loadLiquidGlassMiniPlayerEnabled(): Float?
+    fun loadLiquidGlassNavigationEnabled(): Float?
     fun loadLiquidGlassReflectionIntensity(): Float?
+    fun saveLiquidGlassRimIntensity(value: Float)
+    fun saveLiquidGlassRimWidth(value: Float)
+    fun saveLiquidGlassReflectionAngle(value: Float)
+    fun saveLiquidGlassPlayerEnabled(value: Float)
+    fun saveLiquidGlassMiniPlayerEnabled(value: Float)
+    fun saveLiquidGlassNavigationEnabled(value: Float)
     fun saveLiquidGlassReflectionIntensity(value: Float)
     fun loadLiquidGlassBlurTint(): String?
     fun saveLiquidGlassBlurTint(value: String)

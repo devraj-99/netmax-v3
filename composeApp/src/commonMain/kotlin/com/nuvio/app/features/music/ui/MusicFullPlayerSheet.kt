@@ -797,6 +797,7 @@ private fun QueueListSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .liquidGlass(
+                        component = com.nuvio.app.core.ui.GlassComponent.Player,
                                 shape = itemShape,
                                 dynamicTint = if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else null,
                             )

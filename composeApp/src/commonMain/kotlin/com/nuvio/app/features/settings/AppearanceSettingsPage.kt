@@ -549,7 +549,7 @@ private fun LiquidGlassControlsBottomSheet(
             item {
                 Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
                     Text(
-                        text = stringResource(Res.string.settings_appearance_liquid_glass_controls),
+                        text = "Liquid Glass (Beta)",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
@@ -582,6 +582,7 @@ private fun LiquidGlassControlsBottomSheet(
                     onCheckedChange = LiquidGlassSettingsRepository::setEnhancedLiquidGlass,
                 )
             }
+            item { GlassSectionHeader("EFFECTS") }
             item {
                 GlassSlider(
                     title = stringResource(Res.string.settings_appearance_liquid_glass_vibrancy),
@@ -598,6 +599,33 @@ private fun LiquidGlassControlsBottomSheet(
                     value = state.blurRadius,
                     range = 0f..48f,
                     onValueChange = LiquidGlassSettingsRepository::setBlurRadius,
+                )
+            }
+            item {
+                GlassSlider(
+                    title = "Rim highlight strength",
+                    valueLabel = state.rimIntensity.formatOne(),
+                    value = state.rimIntensity,
+                    range = 0f..2f,
+                    onValueChange = LiquidGlassSettingsRepository::setRimIntensity,
+                )
+            }
+            item {
+                GlassSlider(
+                    title = "Rim width",
+                    valueLabel = state.rimWidth.formatOne(),
+                    value = state.rimWidth,
+                    range = 0f..3f,
+                    onValueChange = LiquidGlassSettingsRepository::setRimWidth,
+                )
+            }
+            item {
+                GlassSlider(
+                    title = "Reflection light angle",
+                    valueLabel = state.reflectionAngle.formatOne(),
+                    value = state.reflectionAngle,
+                    range = 0f..360f,
+                    onValueChange = LiquidGlassSettingsRepository::setReflectionAngle,
                 )
             }
             item {
@@ -628,12 +656,30 @@ private fun LiquidGlassControlsBottomSheet(
                 )
             }
             item {
+                SettingsSwitchRow(
+                    title = "Chromatic Aberration",
+                    description = "Enable chromatic aberration",
+                    checked = state.chromaticAberration > 0f,
+                    isTablet = isTablet,
+                    onCheckedChange = { LiquidGlassSettingsRepository.setChromaticAberration(if (it) 1f else 0f) },
+                )
+            }
+            item {
                 GlassSlider(
                     title = stringResource(Res.string.settings_appearance_liquid_glass_chromatic_aberration),
                     valueLabel = "${(state.chromaticAberration * 100).toInt()}%",
                     value = state.chromaticAberration,
                     range = 0f..1f,
                     onValueChange = LiquidGlassSettingsRepository::setChromaticAberration,
+                )
+            }
+            item {
+                SettingsSwitchRow(
+                    title = "Depth Effect",
+                    description = "Enable depth effect",
+                    checked = state.depthEffect > 0f,
+                    isTablet = isTablet,
+                    onCheckedChange = { LiquidGlassSettingsRepository.setDepthEffect(if (it) 1f else 0f) },
                 )
             }
             item {
@@ -645,6 +691,7 @@ private fun LiquidGlassControlsBottomSheet(
                     onValueChange = LiquidGlassSettingsRepository::setDepthEffect,
                 )
             }
+            item { GlassSectionHeader("APPEARANCE") }
             item {
                 GlassSlider(
                     title = stringResource(Res.string.settings_appearance_liquid_glass_surface_opacity),
@@ -678,6 +725,34 @@ private fun LiquidGlassControlsBottomSheet(
                     onSelected = LiquidGlassSettingsRepository::setTextColor,
                 )
             }
+            item { GlassSectionHeader("PER COMPONENT") }
+            item {
+                SettingsSwitchRow(
+                    title = "Glass Player",
+                    description = "Use liquid glass for this component",
+                    checked = state.playerEnabled > 0.5f,
+                    isTablet = isTablet,
+                    onCheckedChange = { LiquidGlassSettingsRepository.setPlayerEnabled(if (it) 1f else 0f) },
+                )
+            }
+            item {
+                SettingsSwitchRow(
+                    title = "Glass Mini Player",
+                    description = "Use liquid glass for this component",
+                    checked = state.miniPlayerEnabled > 0.5f,
+                    isTablet = isTablet,
+                    onCheckedChange = { LiquidGlassSettingsRepository.setMiniPlayerEnabled(if (it) 1f else 0f) },
+                )
+            }
+            item {
+                SettingsSwitchRow(
+                    title = "Glass Navigation Bar",
+                    description = "Use liquid glass for this component",
+                    checked = state.navigationEnabled > 0.5f,
+                    isTablet = isTablet,
+                    onCheckedChange = { LiquidGlassSettingsRepository.setNavigationEnabled(if (it) 1f else 0f) },
+                )
+            }
             item {
                 NuvioBottomSheetActionRow(
                     title = stringResource(Res.string.settings_appearance_liquid_glass_reset),
@@ -689,6 +764,12 @@ private fun LiquidGlassControlsBottomSheet(
 }
 
 @Composable
+private fun GlassSectionHeader(title: String) {
+    Text(title, modifier = Modifier.padding(start = 22.dp, top = 24.dp, bottom = 10.dp),
+        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable
 private fun GlassSlider(
     title: String,
     valueLabel: String,
@@ -696,12 +777,50 @@ private fun GlassSlider(
     range: ClosedFloatingPointRange<Float>,
     onValueChange: (Float) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 7.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(valueLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Slider(value = value, onValueChange = onValueChange, valueRange = range)
+    var open by remember { mutableStateOf(false) }
+    var original by remember { mutableStateOf(value) }
+    val defaults = LiquidGlassSettings()
+    val defaultValue = when {
+        title.contains("Vibrancy", true) -> defaults.vibrancy
+        title.contains("Blur", true) -> defaults.blurRadius
+        title.contains("Height", true) -> defaults.refractionHeight
+        title.contains("Amount", true) -> defaults.refractionAmount
+        title.contains("Opacity", true) -> defaults.surfaceOpacity
+        title.contains("angle", true) -> defaults.reflectionAngle
+        title.contains("width", true) -> defaults.rimWidth
+        title.contains("Rim", true) -> defaults.rimIntensity
+        title.contains("Reflection", true) -> defaults.reflectionIntensity
+        title.contains("Chromatic", true) -> defaults.chromaticAberration
+        title.contains("Depth", true) -> defaults.depthEffect
+        else -> range.start
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable { original = value; open = true }.padding(20.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(valueLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (open) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { onValueChange(original); open = false },
+            title = { Text(title) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(value.formatOne(), style = MaterialTheme.typography.headlineSmall)
+                    Spacer(Modifier.height(16.dp))
+                    Slider(value = value, onValueChange = onValueChange, valueRange = range)
+                    androidx.compose.material3.TextButton(onClick = { onValueChange(defaultValue.coerceIn(range)) }) { Text("Reset") }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { onValueChange(original); open = false }) { Text("Cancel") }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { open = false }) { Text("OK") }
+            },
+        )
     }
 }
 

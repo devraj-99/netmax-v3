@@ -8,7 +8,10 @@ import androidx.compose.foundation.shape.CornerBasedShape
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.runtimeShaderEffect
+import com.kyant.backdrop.effects.colorControls
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.highlight.HighlightStyle
 import com.nuvio.app.features.settings.LiquidGlassSettings
@@ -26,7 +29,10 @@ internal fun Modifier.refractiveGlass(
     effects = {
         // Blur is deliberately small: the rounded lens, not heavy frosting,
         // provides the liquid shape. Zero means no blur and no colour wash.
-        if (settings.blurRadius > 0f) blur((settings.blurRadius * 0.25f).dp.toPx())
+        if (settings.blurRadius > 0f) {
+            colorControls(saturation = settings.vibrancy)
+            blur((settings.blurRadius * if (settings.enhancedLiquidGlass) 0.35f else 0.25f).dp.toPx())
+        }
         val cornerShape = shape as? CornerBasedShape
         if (cornerShape != null) {
             val corner = minOf(
@@ -36,14 +42,25 @@ internal fun Modifier.refractiveGlass(
                 cornerShape.bottomEnd.toPx(size, this),
                 size.minDimension / 2f,
             )
-            lens(
-                refractionHeight = (size.minDimension * 0.24f * settings.refractionHeight)
-                    .coerceAtMost(corner).coerceAtLeast(0f),
-                refractionAmount = (size.minDimension * 0.28f * settings.refractionAmount)
-                    .coerceIn(0f, size.minDimension),
-                depthEffect = settings.depthEffect > 0.01f,
-                chromaticAberration = settings.chromaticAberration > 0.01f,
-            )
+            val height = (size.minDimension * 0.24f * settings.refractionHeight)
+                .coerceIn(0f, corner.coerceAtLeast(0f))
+            val amount = (size.minDimension * 0.28f * settings.refractionAmount)
+                .coerceIn(0f, size.minDimension)
+            if (height > 0f && amount > 0f) {
+                padding = (padding - height).coerceAtLeast(0f)
+                val width = size.width
+                val surfaceHeight = size.height
+                val offset = -padding
+                runtimeShaderEffect("NetmaxLens", GlassLensShader, "content") {
+                    setFloatUniform("size", width, surfaceHeight)
+                    setFloatUniform("offset", offset, offset)
+                    setFloatUniform("cornerRadii", floatArrayOf(corner, corner, corner, corner))
+                    setFloatUniform("refractionHeight", height)
+                    setFloatUniform("refractionAmount", -amount)
+                    setFloatUniform("depthEffect", settings.depthEffect)
+                    setFloatUniform("chromaticAberration", settings.chromaticAberration)
+                }
+            }
         }
     },
     highlight = {
@@ -51,7 +68,7 @@ internal fun Modifier.refractiveGlass(
         else Highlight(
             width = borderWidth.coerceAtMost(1.dp),
             alpha = (settings.reflectionIntensity * 0.7f).coerceIn(0f, 1f),
-            style = HighlightStyle.Default,
+            style = HighlightStyle.Default(angle = settings.reflectionAngle),
         )
     },
     // Avoid a costly large shadow per icon, especially during video playback.
@@ -66,4 +83,12 @@ internal fun Modifier.refractiveGlass(
             }
         }
     },
+).then(
+    if (borderWidth.value > 0f && settings.rimWidth > 0f && settings.rimIntensity > 0f) {
+        Modifier.border(
+            (borderWidth * settings.rimWidth).coerceAtMost(4.dp),
+            Color.White.copy(alpha = (0.24f * settings.rimIntensity).coerceIn(0f, 0.8f)),
+            shape,
+        )
+    } else Modifier
 )
