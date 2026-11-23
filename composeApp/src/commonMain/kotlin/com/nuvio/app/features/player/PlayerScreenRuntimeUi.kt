@@ -215,6 +215,9 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             )
         }
 
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.nuvio.app.core.ui.LocalAppHazeState provides playerGlassHazeState,
+        ) {
         RenderPlayerControls(displayedPositionMs = displayedPositionMs, isEpisode = isEpisode, hazeState = playerGlassHazeState)
         RenderPlaybackOverlays(
             runtime = runtime,
@@ -227,6 +230,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             p2pRebufferProgress = p2pRebufferProgress,
         )
         RenderPlayerModals(displayedPositionMs = displayedPositionMs)
+        }
     }
 }
 

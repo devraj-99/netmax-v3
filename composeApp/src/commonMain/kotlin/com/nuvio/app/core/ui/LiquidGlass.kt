@@ -217,7 +217,8 @@ fun Modifier.liquidGlass(
     }
 
     val backdrop = glassBackdropFor(resolvedHazeState)
-    if (backdrop != null && com.kyant.backdrop.isRuntimeShaderSupported()) {
+    if (backdrop != null && shape is androidx.compose.foundation.shape.CornerBasedShape &&
+        com.kyant.backdrop.isRuntimeShaderSupported()) {
         return this.refractiveGlass(backdrop, shape, settings, borderWidth, alphaFactor)
     }
 
