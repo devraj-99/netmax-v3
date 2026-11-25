@@ -139,6 +139,7 @@ actual fun PlatformPlayerSurface(
     }
 
     var seekFallbackPositionMs by remember(playerSourceKey) { mutableStateOf<Long?>(null) }
+    var lastExoPositionMs by remember(playerSourceKey) { mutableStateOf(0L) }
 
     when (activeEngine) {
         ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
@@ -165,10 +166,15 @@ actual fun PlatformPlayerSurface(
             useNativeController = useNativeController,
             onInitialPositionHandled = onInitialPositionHandled,
             onControllerReady = onControllerReady,
-            onSnapshot = onSnapshot,
+            onSnapshot = { snap ->
+                if (snap.positionMs > 0L) lastExoPositionMs = snap.positionMs
+                onSnapshot(snap)
+            },
             onError = { message ->
                 if (message != null && playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Auto) {
                     Log.w(TAG, "ExoPlayer failed; falling back to libmpv: $message")
+                    // Keep the position: without this libmpv started from 0:00 (seen as "restart").
+                    lastExoPositionMs.takeIf { it > 5_000L }?.let { seekFallbackPositionMs = it }
                     initialPositionRequestKey?.let { key ->
                         onInitialPositionHandled(key, false)
                     }
