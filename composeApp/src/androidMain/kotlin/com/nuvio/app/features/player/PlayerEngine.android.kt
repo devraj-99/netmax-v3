@@ -138,8 +138,18 @@ actual fun PlatformPlayerSurface(
         mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine())
     }
 
+    var seekFallbackPositionMs by remember(playerSourceKey) { mutableStateOf<Long?>(null) }
+
     when (activeEngine) {
         ResolvedAndroidPlaybackEngine.ExoPlayer -> ExoPlayerSurface(
+            onSeekRestartDetected = { targetMs ->
+                // Exo jumped to the start after a forward seek (file without a usable seek index,
+                // typical for huge MKVs). libmpv scans the file itself, so resume there.
+                Log.w(TAG, "ExoPlayer seek restarted from 0 (target=$targetMs); switching to libmpv")
+                seekFallbackPositionMs = targetMs
+                initialPositionRequestKey?.let { key -> onInitialPositionHandled(key, false) }
+                activeEngine = ResolvedAndroidPlaybackEngine.Libmpv
+            },
             sourceUrl = sourceUrl,
             sourceAudioUrl = sourceAudioUrl,
             sourceHeaders = sourceHeaders,
@@ -186,7 +196,13 @@ actual fun PlatformPlayerSurface(
                 videoOutput = playerSettings.androidLibmpvVideoOutput,
                 hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled,
                 yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
-                onControllerReady = onControllerReady,
+                onControllerReady = { controller ->
+                    onControllerReady(controller)
+                    seekFallbackPositionMs?.let { target ->
+                        seekFallbackPositionMs = null
+                        controller.seekTo(target)
+                    }
+                },
                 onSnapshot = onSnapshot,
                 onError = onError,
             )
@@ -226,11 +242,14 @@ private fun ExoPlayerSurface(
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
+    onSeekRestartDetected: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnSnapshot = rememberUpdatedState(onSnapshot)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnSeekRestart = rememberUpdatedState(onSeekRestartDetected)
+    var lastSeekTargetMs by remember { mutableStateOf(0L) }
     val latestOnInitialPositionHandled = rememberUpdatedState(onInitialPositionHandled)
     val latestPlayWhenReady = rememberUpdatedState(playWhenReady)
     val coroutineScope = rememberCoroutineScope()
@@ -457,7 +476,7 @@ private fun ExoPlayerSurface(
                     exoPlayer.play()
                 },
                 pause = exoPlayer::pause,
-                seekTo = { positionMs -> exoPlayer.seekTo(positionMs.coerceAtLeast(0L)) },
+                seekTo = { positionMs -> lastSeekTargetMs = positionMs; exoPlayer.seekTo(positionMs.coerceAtLeast(0L)) },
                 seekBy = { offsetMs ->
                     exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
                 },
@@ -560,6 +579,22 @@ private fun ExoPlayerSurface(
         }
 
         val listener = object : Player.Listener {
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                if (
+                    reason == Player.DISCONTINUITY_REASON_SEEK &&
+                    lastSeekTargetMs > 30_000L &&
+                    newPosition.positionMs < 3_000L
+                ) {
+                    val target = lastSeekTargetMs
+                    lastSeekTargetMs = 0L
+                    latestOnSeekRestart.value(target)
+                }
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 syncPlayerViewKeepScreenOn()
                 Log.e(
@@ -763,11 +798,14 @@ private fun ExoPlayerSurface(
                 }
 
                 override fun seekTo(positionMs: Long) {
+                    lastSeekTargetMs = positionMs
                     exoPlayer.seekTo(positionMs.coerceAtLeast(0L))
                 }
 
                 override fun seekBy(offsetMs: Long) {
-                    exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
+                    val target = (exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L)
+                    lastSeekTargetMs = target
+                    exoPlayer.seekTo(target)
                 }
 
                 override fun retry() {
