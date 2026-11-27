@@ -20,7 +20,7 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
           df -h /
 
       - name: Enable KVM
@@ -56,6 +56,8 @@ jobs:
           for i in $(seq 1 43); do echo "file '$PWD/seg.mkv'"; done > list.txt
           ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy big.mkv
           ls -la big.mkv
+          mkvmerge -o bignocues.mkv --no-cues big.mkv
+          ls -la bignocues.mkv
           mkvinfo -v big.mkv | grep -q '+ Cues' && echo 'BIG HAS CUES OK' || { echo 'NO CUES IN BIG - invalid'; exit 1; }
           df -h /
           cat > /tmp/seek-check.sh <<'CHECK'
@@ -170,6 +172,8 @@ jobs:
           run_seek_test ctrl ctrl.mkv 180000
           run_seek_test nocues nocues.mkv 180000
           run_seek_test big big.mkv 7740000
+          rm -f big.mkv
+          run_seek_test bignocues bignocues.mkv 7740000
           df -h /sdcard || true
           adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
           CHECK
