@@ -255,6 +255,7 @@ private fun ExoPlayerSurface(
     val latestOnError = rememberUpdatedState(onError)
     val latestOnSeekRestart = rememberUpdatedState(onSeekRestartDetected)
     var lastSeekTargetMs by remember { mutableStateOf(0L) }
+    var seekIssuedAtMs by remember { mutableStateOf(0L) }
     val latestOnInitialPositionHandled = rememberUpdatedState(onInitialPositionHandled)
     val latestPlayWhenReady = rememberUpdatedState(playWhenReady)
     val coroutineScope = rememberCoroutineScope()
@@ -481,7 +482,7 @@ private fun ExoPlayerSurface(
                     exoPlayer.play()
                 },
                 pause = exoPlayer::pause,
-                seekTo = { positionMs -> lastSeekTargetMs = positionMs; exoPlayer.seekTo(positionMs.coerceAtLeast(0L)) },
+                seekTo = { positionMs -> lastSeekTargetMs = positionMs; seekIssuedAtMs = android.os.SystemClock.elapsedRealtime(); exoPlayer.seekTo(positionMs.coerceAtLeast(0L)) },
                 seekBy = { offsetMs ->
                     exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
                 },
@@ -490,6 +491,22 @@ private fun ExoPlayerSurface(
     }
 
     fun dispatchExoPlayerSnapshot() {
+        // Seek watchdog: any file where a seek lands far before the requested position
+        // (no usable seek index, so the demuxer restarts from the beginning) is handed to libmpv.
+        val pendingTarget = lastSeekTargetMs
+        if (pendingTarget > 5_000L && seekIssuedAtMs > 0L) {
+            val sinceSeek = android.os.SystemClock.elapsedRealtime() - seekIssuedAtMs
+            val pos = exoPlayer.currentPosition
+            if (sinceSeek > 20_000L) {
+                lastSeekTargetMs = 0L
+            } else if (sinceSeek > 400L && pos < pendingTarget - 4_000L &&
+                exoPlayer.playbackState == Player.STATE_READY
+            ) {
+                Log.w(TAG, "ExoPlayer seek restarted (target=$pendingTarget pos=$pos); switching to libmpv")
+                lastSeekTargetMs = 0L
+                latestOnSeekRestart.value(pendingTarget)
+            }
+        }
         val snapshot = exoPlayer.snapshot()
         latestOnSnapshot.value(snapshot)
         nowPlayingController.syncPlayback(snapshot)
@@ -589,6 +606,10 @@ private fun ExoPlayerSurface(
                 newPosition: Player.PositionInfo,
                 reason: Int,
             ) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && newPosition.positionMs > 5_000L) {
+                    lastSeekTargetMs = newPosition.positionMs
+                    seekIssuedAtMs = android.os.SystemClock.elapsedRealtime()
+                }
                 if (
                     reason == Player.DISCONTINUITY_REASON_SEEK &&
                     lastSeekTargetMs > 30_000L &&
@@ -804,12 +825,14 @@ private fun ExoPlayerSurface(
 
                 override fun seekTo(positionMs: Long) {
                     lastSeekTargetMs = positionMs
+                    seekIssuedAtMs = android.os.SystemClock.elapsedRealtime()
                     exoPlayer.seekTo(positionMs.coerceAtLeast(0L))
                 }
 
                 override fun seekBy(offsetMs: Long) {
                     val target = (exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L)
                     lastSeekTargetMs = target
+                    seekIssuedAtMs = android.os.SystemClock.elapsedRealtime()
                     exoPlayer.seekTo(target)
                 }
 
