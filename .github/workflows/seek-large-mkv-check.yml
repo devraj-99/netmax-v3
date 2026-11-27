@@ -60,6 +60,7 @@ jobs:
           df -h /
           cat > /tmp/seek-check.sh <<'CHECK'
           set -ux
+          (adb logcat -v time > full-logcat.txt 2>&1 &)
           adb install -r app.apk
           adb shell pm grant com.nuvio.app android.permission.READ_MEDIA_VIDEO
           adb shell am start -n com.nuvio.app/.MainActivity
@@ -174,8 +175,11 @@ jobs:
           adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
           CHECK
       - name: Run seek reproduction on emulator
+        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         with:
+          ram-size: 4096M
+          heap-size: 576M
           api-level: 34
           target: google_apis
           arch: x86_64
@@ -194,4 +198,5 @@ jobs:
             *-uri.txt
             apk-version.txt
             seekdump_*.xml
+            full-logcat.txt
           if-no-files-found: ignore
