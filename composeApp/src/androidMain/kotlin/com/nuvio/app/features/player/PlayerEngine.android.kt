@@ -70,7 +70,6 @@ import androidx.media3.ui.SubtitleView
 import androidx.media3.ui.CaptionStyleCompat
 import com.nuvio.app.R
 import com.nuvio.app.features.streams.normalizeStreamType
-import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.MPV
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
@@ -1401,7 +1400,61 @@ private class NuvioLibmpvView(
     private val hardwareDecodingEnabled: Boolean,
     private val yuv420pEnabled: Boolean,
     attrs: AttributeSet? = null,
-) : BaseMPVView(context, attrs) {
+) : TextureView(context, attrs), TextureView.SurfaceTextureListener {
+    // TextureView (not SurfaceView) so the liquid-glass backdrop can capture the video.
+    val mpv = MPV()
+    private var mpvSurface: android.view.Surface? = null
+    private var voInUse: String = "gpu"
+
+    fun initialize(configDir: String, cacheDir: String) {
+        mpv.create(context)
+        mpv.setOptionString("config", "yes")
+        mpv.setOptionString("config-dir", configDir)
+        for (opt in arrayOf("gpu-shader-cache-dir", "icc-cache-dir"))
+            mpv.setOptionString(opt, cacheDir)
+        initOptions()
+        mpv.init()
+        postInitOptions()
+        mpv.setOptionString("force-window", "no")
+        mpv.setOptionString("idle", "once")
+        surfaceTextureListener = this
+        if (isAvailable) surfaceTexture?.let { onSurfaceTextureAvailable(it, width, height) }
+        observeProperties()
+    }
+
+    private fun setVo(vo: String) {
+        voInUse = vo
+        mpv.setOptionString("vo", vo)
+    }
+
+    override fun onSurfaceTextureAvailable(st: android.graphics.SurfaceTexture, width: Int, height: Int) {
+        val surface = android.view.Surface(st)
+        mpvSurface = surface
+        mpv.attachSurface(surface)
+        mpv.setPropertyString("android-surface-size", "${width}x$height")
+        mpv.setOptionString("force-window", "yes")
+        mpv.setPropertyString("vo", voInUse)
+    }
+
+    override fun onSurfaceTextureSizeChanged(st: android.graphics.SurfaceTexture, width: Int, height: Int) {
+        mpv.setPropertyString("android-surface-size", "${width}x$height")
+    }
+
+    override fun onSurfaceTextureDestroyed(st: android.graphics.SurfaceTexture): Boolean {
+        if (!released.get()) {
+            runCatching {
+                mpv.setPropertyString("vo", "null")
+                mpv.setPropertyString("force-window", "no")
+                mpv.detachSurface()
+            }
+        }
+        mpvSurface?.release()
+        mpvSurface = null
+        return true
+    }
+
+    override fun onSurfaceTextureUpdated(st: android.graphics.SurfaceTexture) = Unit
+
     private val mpvDispatcher = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "NuvioLibmpv").apply { isDaemon = true }
     }.asCoroutineDispatcher()
@@ -1418,7 +1471,7 @@ private class NuvioLibmpvView(
     @Volatile
     private var latestSubtitleTracks: List<LibmpvTrack> = emptyList()
 
-    override fun initOptions() {
+    private fun initOptions() {
         setVo(videoOutput.mpvValue)
         mpv.setOptionString("profile", "fast")
         mpv.setOptionString("hwdec", if (hardwareDecodingEnabled) "auto" else "no")
@@ -1439,9 +1492,9 @@ private class NuvioLibmpvView(
         mpv.setPropertyBoolean("audio-fallback-to-null", true)
     }
 
-    override fun postInitOptions() = Unit
+    private fun postInitOptions() = Unit
 
-    override fun observeProperties() {
+    private fun observeProperties() {
         val props = mapOf(
             "pause" to MPV.mpvFormat.MPV_FORMAT_FLAG,
             "paused-for-cache" to MPV.mpvFormat.MPV_FORMAT_FLAG,
@@ -1802,7 +1855,7 @@ private class NuvioLibmpvView(
 
     fun releaseMpv() {
         if (!released.compareAndSet(false, true)) return
-        holder.removeCallback(this)
+        surfaceTextureListener = null
         mpvScope.launch {
             runCatching { mpv.destroy() }
             mpvDispatcher.close()
