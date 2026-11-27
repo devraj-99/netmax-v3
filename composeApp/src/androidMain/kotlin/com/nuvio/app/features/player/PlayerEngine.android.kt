@@ -256,6 +256,7 @@ private fun ExoPlayerSurface(
     val latestOnSeekRestart = rememberUpdatedState(onSeekRestartDetected)
     var lastSeekTargetMs by remember { mutableStateOf(0L) }
     var seekIssuedAtMs by remember { mutableStateOf(0L) }
+    var initialSeekArmed by remember { mutableStateOf(false) }
     val latestOnInitialPositionHandled = rememberUpdatedState(onInitialPositionHandled)
     val latestPlayWhenReady = rememberUpdatedState(playWhenReady)
     val coroutineScope = rememberCoroutineScope()
@@ -497,9 +498,9 @@ private fun ExoPlayerSurface(
         if (pendingTarget > 5_000L && seekIssuedAtMs > 0L) {
             val sinceSeek = android.os.SystemClock.elapsedRealtime() - seekIssuedAtMs
             val pos = exoPlayer.currentPosition
-            if (sinceSeek > 20_000L) {
+            if (!initialSeekArmed && sinceSeek > 20_000L) {
                 lastSeekTargetMs = 0L
-            } else if (sinceSeek > 400L && pos < pendingTarget - 4_000L &&
+            } else if (!initialSeekArmed && sinceSeek > 400L && pos < pendingTarget - 4_000L &&
                 exoPlayer.playbackState == Player.STATE_READY
             ) {
                 Log.w(TAG, "ExoPlayer seek restarted (target=$pendingTarget pos=$pos); switching to libmpv")
@@ -530,6 +531,13 @@ private fun ExoPlayerSurface(
                 "startPositionMs=${requestedStartPositionMs ?: 0L}",
         )
         exoPlayer.setPlaybackMediaItem(mediaItem, requestedStartPositionMs)
+        // Resume position counts as a seek: files without a usable seek index restart from 0
+        // here too, so let the seek watchdog check it once the player is ready.
+        if (requestedStartPositionMs != null && requestedStartPositionMs > 5_000L) {
+            lastSeekTargetMs = requestedStartPositionMs
+            seekIssuedAtMs = SystemClock.elapsedRealtime()
+            initialSeekArmed = true
+        }
         if (fallbackStartPositionMs == null) {
             initialPositionRequestKey?.let { key ->
                 latestOnInitialPositionHandled.value(
@@ -702,6 +710,10 @@ private fun ExoPlayerSurface(
                         "terminalError=${exoPlayer.playerError?.errorCodeName ?: "none"}",
                 )
                 if (playbackState == Player.STATE_READY) {
+                    if (initialSeekArmed && lastSeekTargetMs > 0L) {
+                        seekIssuedAtMs = SystemClock.elapsedRealtime()
+                    }
+                    initialSeekArmed = false
                     fallbackStartPositionMs = null
                     latestOnError.value(null)
                     exoPlayer.logCurrentTracks("STATE_READY")

@@ -151,6 +151,22 @@ jobs:
             if [ "$MINPOS" = 999999999 ]; then echo "VERDICT $NAME doubletap: NO DATA"; elif [ "$MINPOS" -lt 15000 ]; then echo "VERDICT $NAME doubletap: REPRODUCED restart (min_pos=${MINPOS}ms)"; else echo "VERDICT $NAME doubletap: ok (min_pos=${MINPOS}ms)"; fi
             adb exec-out screencap -p > "shot_${NAME}_after_tap.png" || true
             echo "--- $NAME engine logcat ---"; adb logcat -d | grep -aiE "seek restarted|switching to libmpv|falling back|ExoPlayer failed|libmpv|mpv:" | cut -c1-220 | tail -30 || true
+            # resume test: close and reopen the same file, position must resume (not 0)
+            sleep 5
+            BEFORE=$(python3 .github/scripts/media_pos.py "$NAME before_close" | sed -n 's/.*position_ms=\([0-9]*\)/\1/p')
+            adb shell input keyevent KEYCODE_BACK; sleep 3
+            adb shell am force-stop com.nuvio.app; sleep 3
+            adb shell am start -a android.intent.action.VIEW -d "$URI" -t "$MIME" --grant-read-uri-permission -n com.nuvio.app/.MainActivity
+            sleep 25
+            RMIN=999999999
+            for S in 1 2 3; do
+              sleep 3
+              OUT=$(python3 .github/scripts/media_pos.py "$NAME after_reopen_$S"); echo "$OUT"
+              PO=$(echo "$OUT" | sed -n 's/.*position_ms=\([0-9]*\)/\1/p')
+              [ -n "$PO" ] && [ "$PO" -lt "$RMIN" ] && RMIN=$PO
+            done
+            if [ "$RMIN" = 999999999 ]; then echo "VERDICT $NAME resume: NO DATA (before_close=${BEFORE})"; elif [ -n "$BEFORE" ] && [ "$RMIN" -lt $((BEFORE - 15000)) ]; then echo "VERDICT $NAME resume: REPRODUCED restart (before=${BEFORE}ms after=${RMIN}ms)"; else echo "VERDICT $NAME resume: ok (before=${BEFORE}ms after=${RMIN}ms)"; fi
+            adb exec-out screencap -p > "shot_${NAME}_after_reopen.png" || true
             # slider drag to 50%
             python3 .github/scripts/seek_drag.py 0.5 "$DURMS" || echo "drag failed $NAME"
             MINPOS2=999999999
