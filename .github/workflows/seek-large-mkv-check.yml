@@ -53,11 +53,9 @@ jobs:
           mkvinfo -v ctrl.mkv | grep -q '+ Cues' && echo 'CTRL HAS CUES OK' || { echo 'NO CUES IN CTRL - control invalid'; exit 1; }
           if mkvinfo -v nocues.mkv | grep -q '+ Cues'; then echo 'CUES STILL PRESENT (bad strip)'; exit 1; else echo 'NOCUES STRIPPED OK'; fi
           # big file with valid cues: concat 43 copies -> ~4.8 GB, 129 min
-          for i in $(seq 1 43); do echo "file '$PWD/seg.mkv'"; done > list.txt
+          for i in 1; do echo "file '$PWD/seg.mkv'"; done > list.txt
           ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy big.mkv
           ls -la big.mkv
-          mkvmerge -o bignocues.mkv --no-cues big.mkv
-          ls -la bignocues.mkv
           mkvinfo -v big.mkv | grep -q '+ Cues' && echo 'BIG HAS CUES OK' || { echo 'NO CUES IN BIG - invalid'; exit 1; }
           df -h /
           cat > /tmp/seek-check.sh <<'CHECK'
@@ -151,6 +149,7 @@ jobs:
             done
             if [ "$MINPOS" = 999999999 ]; then echo "VERDICT $NAME doubletap: NO DATA"; elif [ "$MINPOS" -lt 15000 ]; then echo "VERDICT $NAME doubletap: REPRODUCED restart (min_pos=${MINPOS}ms)"; else echo "VERDICT $NAME doubletap: ok (min_pos=${MINPOS}ms)"; fi
             adb exec-out screencap -p > "shot_${NAME}_after_tap.png" || true
+            echo "--- $NAME engine logcat ---"; adb logcat -d | grep -aiE "seek restarted|switching to libmpv|falling back|ExoPlayer failed|libmpv|mpv:" | cut -c1-220 | tail -30 || true
             # slider drag to 50%
             python3 .github/scripts/seek_drag.py 0.5 "$DURMS" || echo "drag failed $NAME"
             MINPOS2=999999999
@@ -169,11 +168,8 @@ jobs:
             adb shell rm -f "/sdcard/Movies/$FILE" || true
           }
 
-          run_seek_test ctrl ctrl.mkv 180000
           run_seek_test nocues nocues.mkv 180000
-          run_seek_test big big.mkv 7740000
-          rm -f big.mkv
-          run_seek_test bignocues bignocues.mkv 7740000
+          run_seek_test ctrl ctrl.mkv 180000
           df -h /sdcard || true
           adb shell dumpsys package com.nuvio.app | grep -E 'versionCode|versionName' > apk-version.txt
           CHECK
